@@ -19,7 +19,7 @@ const BANKS = [
 const EMPTY = {
   name:"",bankType:"",phone1:"",phone2:"",nationalId:"",
   accountNumber:"",iban:"",amount:"",currency:"د.ل",
-  purchasedBy:"",cardBooked:false,bookingDate:"",notes:""
+  purchasedBy:"",cardBooked:false,bookingDate:"",pinCode:"",notes:""
 };
 
 const CSS = `
@@ -218,8 +218,8 @@ function fmt(ts) {
 }
 
 function exportCSV(clients) {
-  const H = ["الاسم","المصرف","الهاتف1","الهاتف2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","حالة البطاقة","تاريخ الحجز","ملاحظات"];
-  const R = clients.map(c=>[c.name,c.bankType,c.phone1,c.phone2||"",c.nationalId,c.accountNumber||"",c.iban||"",c.amount||"",c.currency,c.purchasedBy||"",c.cardBooked?"تم الحجز":"لم يتم",c.bookingDate||"",c.notes||""]);
+  const H = ["الاسم","المصرف","الهاتف1","الهاتف2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","حالة البطاقة","تاريخ الحجز","الرقم السري","ملاحظات"];
+  const R = clients.map(c=>[c.name,c.bankType,c.phone1,c.phone2||"",c.nationalId,c.accountNumber||"",c.iban||"",c.amount||"",c.currency,c.purchasedBy||"",c.cardBooked?"تم الحجز":"لم يتم",c.bookingDate||"",c.pinCode||"",c.notes||""]);
   const csv=[H,...R].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
@@ -343,6 +343,14 @@ const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving}) {
               onChange={ev=>set("bookingDate",ev.target.value)}/>
           </div>
         )}
+        {/* Pin Code */}
+        <div className="fg full">
+          <label className="fl">الرقم السري للبطاقة</label>
+          <input className="fi ltr" placeholder="مثال: 1234"
+            value={f.pinCode} inputMode="numeric" maxLength={4}
+            onChange={ev=>set("pinCode",ev.target.value.replace(/[^0-9]/g,"").slice(0,4))}
+            style={{letterSpacing:6,fontSize:20,textAlign:"center"}}/>
+        </div>
         {/* Notes */}
         <div className="fg full">
           <label className="fl">ملاحظات</label>
@@ -368,7 +376,7 @@ function ViewClient({c,onClose,onEdit}) {
     ["المبلغ",c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"],
     ["تم الشراء من طرف",c.purchasedBy||"—"],
     ["حالة البطاقة",c.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
-    ["تاريخ الحجز",c.bookingDate||"—"],["ملاحظات",c.notes||"—"],
+    ["تاريخ الحجز",c.bookingDate||"—"],["الرقم السري",c.pinCode||"—"],["ملاحظات",c.notes||"—"],
     ["تاريخ الإضافة",fmt(c.createdAt)],["أضيف بواسطة",c.createdBy||"—"],
     ["آخر تعديل",fmt(c.updatedAt)],
   ];
