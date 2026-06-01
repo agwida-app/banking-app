@@ -568,12 +568,18 @@ function AdminPanel({user, onBack}) {
                   {isFree&&<span className="status-chip chip-free">🔓 متاح</span>}
                   {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
                   <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
+                  <button className="ib" onClick={async()=>{
+                    if(!window.confirm("إعادة ضبط الأجهزة؟ سيُطلب من المستخدم تسجيل دخول من جديد."))return;
+                    await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
+                    notify("تم إعادة ضبط الأجهزة ✅");
+                  }} title="إعادة ضبط الأجهزة">📱</button>
                   <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
                 </div>
               </div>
               <div className="sub-meta">
                 📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
                 👥 الحد الأقصى: {s.maxClients||"غير محدود"} عميل<br/>
+                📱 الأجهزة: {Object.keys(s.devices||{}).length} / 3<br/>
                 {s.usedByEmail&&<>👤 مستخدم بواسطة: {s.usedByEmail}<br/></>}
                 {s.notes&&<>📝 {s.notes}</>}
               </div>
@@ -919,20 +925,56 @@ export default function App() {
 
   useEffect(()=>{return onAuthStateChanged(auth,u=>{setUser(u);setReady(true);});},[]);
 
-  // Subscription check
+  // Generate unique device ID (stored in localStorage)
+  const getDeviceId = useCallback(()=>{
+    let id = localStorage.getItem("deviceId");
+    if(!id){
+      id = "dev_" + Math.random().toString(36).substr(2,9) + "_" + Date.now().toString(36);
+      localStorage.setItem("deviceId", id);
+    }
+    return id;
+  },[]);
+
+  // Subscription check + device registration
   useEffect(()=>{
     if(!user){setSubStatus(null);return;}
     if(user.uid===ADMIN_UID){setSubStatus("active");setSubDays(9999);setMaxClients(999999);return;}
     const q=query(collection(db,"subscriptions"),where("usedBy","==",user.uid));
-    return onSnapshot(q,snap=>{
+    return onSnapshot(q,async snap=>{
       if(snap.empty){setSubStatus("none");return;}
-      const sub=snap.docs[0].data();
+      const subDoc=snap.docs[0];
+      const sub=subDoc.data();
       const days=daysLeft(sub.expiresAt);
       setSubDays(days);
       setMaxClients(sub.maxClients||999999);
-      setSubStatus(days>0?"active":"expired");
+      if(days<=0){setSubStatus("expired");return;}
+
+      // Device tracking — max 3 devices
+      const deviceId = getDeviceId();
+      const devices = sub.devices || {};
+      const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString() };
+
+      if(devices[deviceId]){
+        // Known device — update lastSeen silently
+        await updateDoc(doc(db,"subscriptions",subDoc.id),{
+          [`devices.${deviceId}`]: deviceEntry
+        });
+        setSubStatus("active");
+      } else {
+        // New device — check limit
+        const deviceCount = Object.keys(devices).length;
+        if(deviceCount >= 3){
+          setSubStatus("device_limit");
+        } else {
+          // Register new device
+          await updateDoc(doc(db,"subscriptions",subDoc.id),{
+            [`devices.${deviceId}`]: deviceEntry
+          });
+          setSubStatus("active");
+        }
+      }
     });
-  },[user]);
+  },[user, getDeviceId]);
 
   // Auto backup every hour
   useEffect(()=>{
@@ -1027,6 +1069,21 @@ export default function App() {
   );
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
   if(subStatus==="none")return <ActivationScreen user={user} onActivated={()=>setSubStatus("checking")}/>;
+  if(subStatus==="device_limit")return(
+    <div className="aw"><style>{CSS}</style>
+      <div className="ac">
+        <div className="al2"><div className="li">🚫</div><h1>تجاوزت الحد الأقصى للأجهزة</h1></div>
+        <div style={{background:"rgba(231,76,60,.08)",border:"1px solid rgba(231,76,60,.25)",borderRadius:12,padding:20,marginBottom:20,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📱📱📱</div>
+          <p style={{color:"var(--gray2)",fontSize:14,lineHeight:1.8}}>
+            اشتراكك مسجّل على <strong style={{color:"var(--white)"}}>3 أجهزة</strong> وهو الحد الأقصى المسموح به.<br/>
+            لإضافة هذا الجهاز، تواصل مع المسؤول لإعادة ضبط أجهزتك.
+          </p>
+        </div>
+        <button className="bp" onClick={()=>signOut(auth)}>تسجيل خروج</button>
+      </div>
+    </div>
+  );
   if(showAdmin&&isAdmin)return <AdminPanel user={user} onBack={()=>setShowAdmin(false)}/>;
 
   const nav=[
