@@ -1,5 +1,5 @@
 // src/App.js
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, sendPasswordResetEmail,
@@ -194,7 +194,7 @@ textarea.fi{resize:none}
   width:100%;max-width:580px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
 .drawer-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
   display:flex;align-items:center;justify-content:space-between;background:var(--navy2)}
-.drawer-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 20px 100px}
+.drawer-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 20px 20px}
 .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
   position:sticky;top:0;background:var(--navy2);padding-bottom:12px;border-bottom:1px solid var(--border);z-index:1}
 .dt{font-size:17px;font-weight:900}
@@ -203,9 +203,9 @@ textarea.fi{resize:none}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 @media(max-width:500px){.g2{grid-template-columns:1fr}}
 .g2 .full{grid-column:1/-1}
-.df{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;
-  position:sticky;bottom:0;background:var(--navy2);padding:12px 0 4px;
-  border-top:1px solid var(--border)}
+.df{display:flex;gap:10px;justify-content:flex-end;
+  padding:12px 20px;border-top:1px solid var(--border);
+  background:var(--navy2);flex-shrink:0}
 
 .dr2{display:flex;gap:7px;margin-bottom:8px;font-size:13px;align-items:flex-start}
 .dl{color:var(--gray);min-width:145px;flex-shrink:0;font-size:12px;padding-top:1px}
@@ -262,7 +262,7 @@ function Notif({n,onClose}) {
 }
 
 // ── Stable form – never re-mounts, keyboard stays open ──────
-const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving}) {
+const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving, submitRef}) {
   const [f, setF] = useState(() => init ? {...init} : {...EMPTY});
   const [e, setE] = useState({});
 
@@ -282,6 +282,9 @@ const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving}) {
     if (Object.keys(err).length){setE(err);return;}
     onSave(f);
   }, [f, onSave]);
+
+  // expose submit to parent
+  if (submitRef) submitRef.current = submit;
 
   return (
     <>
@@ -407,12 +410,6 @@ const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving}) {
           <textarea className="fi" rows={3} placeholder="ملاحظات إضافية..."
             value={f.notes} onChange={ev=>set("notes",ev.target.value)}/>
         </div>
-      </div>
-      <div className="df">
-        <button className="bs" onClick={onCancel} type="button">إلغاء</button>
-        <button className="bsv" onClick={submit} disabled={saving} type="button">
-          {saving?<span className="spin"/>:"💾 حفظ"}
-        </button>
       </div>
     </>
   );
@@ -782,34 +779,52 @@ export default function App() {
       </main>
 
       {/* ADD DRAWER */}
-      {modal==="add"&&(
-        <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div className="drawer">
-            <div className="drawer-head">
-              <span className="dt">➕ إضافة عميل جديد</span>
-              <button className="dc" onClick={()=>setModal(null)}>✕</button>
-            </div>
-            <div className="drawer-body">
-              <ClientForm onSave={handleAdd} onCancel={()=>setModal(null)} saving={saving}/>
+      {modal==="add"&&(()=>{
+        const ref = {current:null};
+        return (
+          <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div className="drawer">
+              <div className="drawer-head">
+                <span className="dt">➕ إضافة عميل جديد</span>
+                <button className="dc" onClick={()=>setModal(null)}>✕</button>
+              </div>
+              <div className="drawer-body">
+                <ClientForm onSave={handleAdd} onCancel={()=>setModal(null)} saving={saving} submitRef={ref}/>
+              </div>
+              <div className="df">
+                <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
+                <button className="bsv" onClick={()=>ref.current&&ref.current()} disabled={saving}>
+                  {saving?<span className="spin"/>:"💾 حفظ"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* EDIT DRAWER */}
-      {modal==="edit"&&sel&&(
-        <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div className="drawer">
-            <div className="drawer-head">
-              <span className="dt">✏️ تعديل بيانات العميل</span>
-              <button className="dc" onClick={()=>setModal(null)}>✕</button>
-            </div>
-            <div className="drawer-body">
-              <ClientForm init={sel} onSave={handleEdit} onCancel={()=>setModal(null)} saving={saving}/>
+      {modal==="edit"&&sel&&(()=>{
+        const ref = {current:null};
+        return (
+          <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div className="drawer">
+              <div className="drawer-head">
+                <span className="dt">✏️ تعديل بيانات العميل</span>
+                <button className="dc" onClick={()=>setModal(null)}>✕</button>
+              </div>
+              <div className="drawer-body">
+                <ClientForm init={sel} onSave={handleEdit} onCancel={()=>setModal(null)} saving={saving} submitRef={ref}/>
+              </div>
+              <div className="df">
+                <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
+                <button className="bsv" onClick={()=>ref.current&&ref.current()} disabled={saving}>
+                  {saving?<span className="spin"/>:"💾 حفظ"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* VIEW */}
       {modal==="view"&&sel&&(
