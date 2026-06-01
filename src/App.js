@@ -104,7 +104,9 @@ textarea.fi{resize:none}
 .app.light .tw td.nm{color:#1a1a2e}
 .app.light .sc{background:rgba(0,0,0,.03);border-color:rgba(184,134,11,.2)}
 .app.light .drawer{background:#fff;border-color:rgba(184,134,11,.2)}
+.app.light .drawer-head{background:#fff}
 .app.light .dh{background:#fff}
+.app.light .df{background:#fff}
 .app.light .log{background:rgba(0,0,0,.03);border-color:rgba(184,134,11,.15)}
 .app.light .auth-card{background:rgba(240,244,255,.98)}
 .app.light .mh{background:rgba(240,244,255,.98)}
@@ -189,8 +191,10 @@ textarea.fi{resize:none}
   .drawer{border-radius:18px!important;max-height:85vh!important;margin:20px}
 }
 .drawer{background:var(--navy2);border:1px solid var(--border);border-radius:18px 18px 0 0;
-  width:100%;max-width:580px;max-height:92vh;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;padding:22px 20px 40px}
+  width:100%;max-width:580px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.drawer-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;background:var(--navy2)}
+.drawer-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 20px 100px}
 .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
   position:sticky;top:0;background:var(--navy2);padding-bottom:12px;border-bottom:1px solid var(--border);z-index:1}
 .dt{font-size:17px;font-weight:900}
@@ -200,7 +204,8 @@ textarea.fi{resize:none}
 @media(max-width:500px){.g2{grid-template-columns:1fr}}
 .g2 .full{grid-column:1/-1}
 .df{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;
-  position:sticky;bottom:0;background:var(--navy2);padding:12px 0 0}
+  position:sticky;bottom:0;background:var(--navy2);padding:12px 0 4px;
+  border-top:1px solid var(--border)}
 
 .dr2{display:flex;gap:7px;margin-bottom:8px;font-size:13px;align-items:flex-start}
 .dl{color:var(--gray);min-width:145px;flex-shrink:0;font-size:12px;padding-top:1px}
@@ -429,19 +434,21 @@ function ViewClient({c,onClose,onEdit}) {
   return (
     <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="drawer">
-        <div className="dh">
+        <div className="drawer-head">
           <span className="dt">👤 {c.name}</span>
           <button className="dc" onClick={onClose}>✕</button>
         </div>
-        {rows.map(([l,v,mono])=>(
-          <div key={l} className="dr2">
-            <span className="dl">{l}</span>
-            <span className={`dv${mono?" mono":""}`}>{v}</span>
+        <div className="drawer-body">
+          {rows.map(([l,v,mono])=>(
+            <div key={l} className="dr2">
+              <span className="dl">{l}</span>
+              <span className={`dv${mono?" mono":""}`}>{v}</span>
+            </div>
+          ))}
+          <div className="df">
+            <button className="bs" onClick={onClose}>إغلاق</button>
+            <button className="bsv" onClick={()=>{onClose();onEdit(c);}}>✏️ تعديل</button>
           </div>
-        ))}
-        <div className="df">
-          <button className="bs" onClick={onClose}>إغلاق</button>
-          <button className="bsv" onClick={()=>{onClose();onEdit(c);}}>✏️ تعديل</button>
         </div>
       </div>
     </div>
@@ -778,11 +785,13 @@ export default function App() {
       {modal==="add"&&(
         <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="drawer">
-            <div className="dh">
+            <div className="drawer-head">
               <span className="dt">➕ إضافة عميل جديد</span>
               <button className="dc" onClick={()=>setModal(null)}>✕</button>
             </div>
-            <ClientForm onSave={handleAdd} onCancel={()=>setModal(null)} saving={saving}/>
+            <div className="drawer-body">
+              <ClientForm onSave={handleAdd} onCancel={()=>setModal(null)} saving={saving}/>
+            </div>
           </div>
         </div>
       )}
@@ -791,11 +800,13 @@ export default function App() {
       {modal==="edit"&&sel&&(
         <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="drawer">
-            <div className="dh">
+            <div className="drawer-head">
               <span className="dt">✏️ تعديل بيانات العميل</span>
               <button className="dc" onClick={()=>setModal(null)}>✕</button>
             </div>
-            <ClientForm init={sel} onSave={handleEdit} onCancel={()=>setModal(null)} saving={saving}/>
+            <div className="drawer-body">
+              <ClientForm init={sel} onSave={handleEdit} onCancel={()=>setModal(null)} saving={saving}/>
+            </div>
           </div>
         </div>
       )}
@@ -808,22 +819,24 @@ export default function App() {
       {/* DELETE */}
       {modal==="del"&&sel&&(
         <div className="drawer-overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div className="drawer" style={{maxHeight:"auto",padding:24}}>
-            <div className="dh">
+          <div className="drawer" style={{maxHeight:300}}>
+            <div className="drawer-head">
               <span className="dt">🗑 تأكيد الحذف</span>
               <button className="dc" onClick={()=>setModal(null)}>✕</button>
             </div>
-            <p style={{color:"var(--gray2)",marginBottom:20,lineHeight:1.8}}>
-              هل أنت متأكد من حذف <strong style={{color:"var(--white)"}}>{sel.name}</strong>؟<br/>
-              <span style={{color:"var(--err)",fontSize:12}}>لا يمكن التراجع عن هذا الإجراء.</span>
-            </p>
-            <div className="df">
-              <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
-              <button style={{background:"var(--err)",border:"none",borderRadius:10,padding:"10px 24px",
-                color:"#fff",fontFamily:"Tajawal,sans-serif",fontSize:14,fontWeight:700,cursor:"pointer"}}
-                onClick={handleDelete} disabled={saving}>
-                {saving?<span className="spin"/>:"حذف نهائياً"}
-              </button>
+            <div className="drawer-body">
+              <p style={{color:"var(--gray2)",marginBottom:20,lineHeight:1.8}}>
+                هل أنت متأكد من حذف <strong style={{color:"var(--white)"}}>{sel.name}</strong>؟<br/>
+                <span style={{color:"var(--err)",fontSize:12}}>لا يمكن التراجع عن هذا الإجراء.</span>
+              </p>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
+                <button style={{background:"var(--err)",border:"none",borderRadius:10,padding:"10px 24px",
+                  color:"#fff",fontFamily:"Tajawal,sans-serif",fontSize:14,fontWeight:700,cursor:"pointer"}}
+                  onClick={handleDelete} disabled={saving}>
+                  {saving?<span className="spin"/>:"حذف نهائياً"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
