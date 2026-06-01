@@ -11,29 +11,37 @@ import {
 import { auth, db } from "./firebase";
 
 const BANKS = [
-  "مصرف الجمهورية","مصرف الوحدة","مصرف التجارة والتنمية",
-  "مصرف الاتحاد","مصرف الصحاري","مصرف شمال أفريقيا",
-  "مصرف الأمة","مصرف الوطني","مصرف التجاري","مصرف المتوسط","أخرى"
+  "التجاري الوطني","الجمهورية","الأمان","الوحدة",
+  "شمال أفريقيا","التجارة والتنمية","المتوسط"
 ];
 
 const EMPTY = {
   name:"",bankType:"",phone1:"",phone2:"",nationalId:"",
   accountNumber:"",iban:"",amount:"",currency:"د.ل",
-  purchasedBy:"",cardBooked:false,bookingDate:"",pinCode:"",notes:""
+  purchasedBy:"",paymentType:"",cardBooked:false,bookingDate:"",pinCode:"",notes:""
 };
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
+:root, :root.dark{
   --navy:#0a1628;--navy2:#0f2040;--navy3:#162d52;
   --gold:#c9a84c;--gold2:#e8c96a;
   --white:#f8f6f0;--gray:#8a9ab5;--gray2:#c5cedd;
   --ok:#2ecc71;--err:#e74c3c;--warn:#f39c12;
   --border:rgba(201,168,76,0.2);
+  --bg:#0a1628;--card-bg:rgba(255,255,255,0.03);--text:#f8f6f0;
+}
+:root.light{
+  --navy:#f0f4ff;--navy2:#ffffff;--navy3:#e0e8ff;
+  --gold:#b8860b;--gold2:#daa520;
+  --white:#1a1a2e;--gray:#6b7a99;--gray2:#4a5568;
+  --ok:#27ae60;--err:#c0392b;--warn:#d68910;
+  --border:rgba(184,134,11,0.25);
+  --bg:#f0f4ff;--card-bg:rgba(0,0,0,0.03);--text:#1a1a2e;
 }
 html{font-family:'Tajawal',sans-serif;direction:rtl}
-body{background:var(--navy);color:var(--white);min-height:100vh}
+body{background:var(--navy);color:var(--white);min-height:100vh;transition:background .3s,color .3s}
 
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
   background:linear-gradient(135deg,#050d1a,#0a1628,#0d1f3c)}
@@ -85,6 +93,23 @@ textarea.fi{resize:none}
 .al{text-align:center;margin-top:12px;font-size:12px;color:var(--gray)}
 .al button{background:none;border:none;color:var(--gold);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:12px;text-decoration:underline}
 
+.app.light{background:#f0f4ff;color:#1a1a2e}
+.app.light .sidebar{background:rgba(240,244,255,.99);border-color:rgba(184,134,11,.2)}
+.app.light .fi{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);color:#1a1a2e}
+.app.light .fi:focus{border-color:var(--gold)}
+.app.light .fi::placeholder{color:#9aa3b0}
+.app.light .tw{background:rgba(0,0,0,.02);border-color:rgba(184,134,11,.2)}
+.app.light .tw th{background:rgba(184,134,11,.08);color:var(--gold)}
+.app.light .tw td{color:#4a5568;border-color:rgba(0,0,0,.06)}
+.app.light .tw td.nm{color:#1a1a2e}
+.app.light .sc{background:rgba(0,0,0,.03);border-color:rgba(184,134,11,.2)}
+.app.light .drawer{background:#fff;border-color:rgba(184,134,11,.2)}
+.app.light .dh{background:#fff}
+.app.light .log{background:rgba(0,0,0,.03);border-color:rgba(184,134,11,.15)}
+.app.light .auth-card{background:rgba(240,244,255,.98)}
+.app.light .mh{background:rgba(240,244,255,.98)}
+.app.light .ni:hover{background:rgba(184,134,11,.08)}
+.app.light .ni.on{background:rgba(184,134,11,.12)}
 .app{display:flex;min-height:100vh}
 .sidebar{width:225px;background:rgba(6,15,30,.99);border-left:1px solid var(--border);
   display:flex;flex-direction:column;padding:18px 13px;position:fixed;right:0;top:0;bottom:0;
@@ -142,7 +167,7 @@ textarea.fi{resize:none}
 .fs option{background:var(--navy2)}
 
 .tw{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:13px;overflow-x:auto}
-.tw table{width:100%;border-collapse:collapse;min-width:480px}
+.tw table{width:100%;border-collapse:collapse;min-width:0}
 .tw th{background:rgba(201,168,76,.05);padding:11px 13px;text-align:right;font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap}
 .tw td{padding:11px 13px;font-size:13px;color:var(--gray2);border-top:1px solid rgba(255,255,255,.04);vertical-align:middle}
 .tw td.nm{color:var(--white);font-weight:600}
@@ -218,8 +243,8 @@ function fmt(ts) {
 }
 
 function exportCSV(clients) {
-  const H = ["الاسم","المصرف","الهاتف1","الهاتف2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","حالة البطاقة","تاريخ الحجز","الرقم السري","ملاحظات"];
-  const R = clients.map(c=>[c.name,c.bankType,c.phone1,c.phone2||"",c.nationalId,c.accountNumber||"",c.iban||"",c.amount||"",c.currency,c.purchasedBy||"",c.cardBooked?"تم الحجز":"لم يتم",c.bookingDate||"",c.pinCode||"",c.notes||""]);
+  const H = ["الاسم","المصرف","الهاتف1","الهاتف2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","نوع الحجز","حالة البطاقة","تاريخ الحجز","الرقم السري","ملاحظات"];
+  const R = clients.map(c=>[c.name,c.bankType,c.phone1,c.phone2||"",c.nationalId,c.accountNumber||"",c.iban||"",c.amount||"",c.currency,c.purchasedBy||"",c.paymentType||"",c.cardBooked?"تم الحجز":"لم يتم",c.bookingDate||"",c.pinCode||"",c.notes||""]);
   const csv=[H,...R].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
@@ -328,6 +353,26 @@ const ClientForm = memo(function ClientForm({init, onSave, onCancel, saving}) {
           <input className="fi" placeholder="اسم الموظف / المسؤول"
             value={f.purchasedBy} onChange={ev=>set("purchasedBy",ev.target.value)}/>
         </div>
+        {/* Payment Type */}
+        <div className="fg full">
+          <label className="fl">نوع الحجز</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {["كاش","حوالة","بطاقة"].map(t=>(
+              <button key={t} type="button"
+                onClick={()=>set("paymentType",t)}
+                style={{
+                  flex:1,padding:"10px 8px",borderRadius:10,cursor:"pointer",
+                  fontFamily:"Tajawal,sans-serif",fontSize:14,fontWeight:700,
+                  border: f.paymentType===t ? "2px solid var(--gold)" : "1.5px solid rgba(255,255,255,.12)",
+                  background: f.paymentType===t ? "rgba(201,168,76,.15)" : "rgba(255,255,255,.05)",
+                  color: f.paymentType===t ? "var(--gold)" : "var(--gray2)",
+                  transition:"all .15s"
+                }}>
+                {t==="كاش"?"💵":t==="حوالة"?"🏦":"💳"} {t}
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Card booked */}
         <div className="fg full">
           <div className="chk">
@@ -375,6 +420,7 @@ function ViewClient({c,onClose,onEdit}) {
     ["رقم الحساب",c.accountNumber||"—",true],["رقم IBAN",c.iban||"—",true],
     ["المبلغ",c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"],
     ["تم الشراء من طرف",c.purchasedBy||"—"],
+    ["نوع الحجز",c.paymentType||"—"],
     ["حالة البطاقة",c.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
     ["تاريخ الحجز",c.bookingDate||"—"],["الرقم السري",c.pinCode||"—"],["ملاحظات",c.notes||"—"],
     ["تاريخ الإضافة",fmt(c.createdAt)],["أضيف بواسطة",c.createdBy||"—"],
@@ -498,6 +544,7 @@ export default function App() {
   const [sel,setSel]=useState(null);
   const [notif,setNotif]=useState(null);
   const [bar,setBar]=useState(false);
+  const [dark,setDark]=useState(true);
   const [saving,setSaving]=useState(false);
   const [search,setSearch]=useState("");
   const [filter,setFilter]=useState("all");
@@ -584,7 +631,7 @@ export default function App() {
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
 
   return(
-    <div className="app">
+    <div className={`app ${dark?"dark":"light"}`}>
       <style>{CSS}</style>
 
       {/* Mobile top bar */}
@@ -612,7 +659,8 @@ export default function App() {
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
           <div className="su-e">{user.email}</div>
-          <button className="lb" onClick={()=>signOut(auth)}>⎋</button>
+          <button className="lb" onClick={()=>setDark(d=>!d)} title="تغيير المظهر">{dark?"☀️":"🌙"}</button>
+          <button className="lb" onClick={()=>signOut(auth)} title="خروج">⎋</button>
         </div>
       </div>
 
@@ -682,7 +730,7 @@ export default function App() {
                 ?<div className="emp"><div className="ei">📋</div><div className="et2">{!clients.length?"اضغط + لإضافة أول عميل":"لا توجد نتائج"}</div></div>
                 :<table>
                   <thead><tr>
-                    <th>الاسم</th><th className="hm">المصرف</th><th>الهاتف</th>
+                    <th>الاسم</th><th className="hm">المصرف</th>
                     <th className="hm">IBAN</th><th className="hm">المبلغ</th><th>البطاقة</th><th></th>
                   </tr></thead>
                   <tbody>
@@ -690,7 +738,7 @@ export default function App() {
                       <tr key={c.id}>
                         <td className="nm">{c.name}</td>
                         <td className="hm" style={{fontSize:12}}>{c.bankType}</td>
-                        <td className="mo">{c.phone1}</td>
+                        
                         <td className="mo hm">{c.iban?c.iban.slice(0,14)+(c.iban.length>14?"…":""):"—"}</td>
                         <td className="am hm">{c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
                         <td><span className={`badge ${c.cardBooked?"ok":"nd"}`}>{c.cardBooked?"✅ تم":"⏳ لم يتم"}</span></td>
