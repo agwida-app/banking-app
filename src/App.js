@@ -473,7 +473,7 @@ function ActivationScreen({user, onActivated}) {
 function AdminPanel({user, onBack}) {
   const [subs,setSubs]=useState([]);
   const [modal,setModal]=useState(false);
-  const [form,setForm]=useState({code:"",plan:"3m",maxClients:100,notes:""});
+  const [form,setForm]=useState({code:"",plan:"3m",customDays:"",maxClients:100,notes:""});
   const [saving,setSaving]=useState(false);
   const [notif,setNotif]=useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
@@ -491,21 +491,30 @@ function AdminPanel({user, onBack}) {
 
   const createSub=async()=>{
     if(!form.code.trim()){notify("أدخل الكود","err");return;}
+    if(!form.plan&&!form.customDays){notify("اختر الباقة أو أدخل عدد الأيام","err");return;}
     setSaving(true);
     try{
-      const plan=PLANS.find(p=>p.id===form.plan);
-      const expDate=addMonths(plan.months);
+      let expDate, planLabel;
+      if(form.customDays&&parseInt(form.customDays)>0){
+        expDate=new Date();
+        expDate.setDate(expDate.getDate()+parseInt(form.customDays));
+        planLabel=`${form.customDays} يوم (مخصص)`;
+      } else {
+        const plan=PLANS.find(p=>p.id===form.plan);
+        expDate=addMonths(plan.months);
+        planLabel=plan.label;
+      }
       await addDoc(collection(db,"subscriptions"),{
         code:form.code.trim().toUpperCase(),
-        plan:form.plan,
-        planLabel:plan.label,
+        plan:form.plan||"custom",
+        planLabel,
         maxClients:parseInt(form.maxClients)||100,
         expiresAt:expDate,
         usedBy:null,usedAt:null,usedByEmail:null,
         createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes
       });
       notify("تم إنشاء الكود ✅");
-      setModal(false);setForm({code:"",plan:"3m",maxClients:100,notes:""});
+      setModal(false);setForm({code:"",plan:"3m",customDays:"",maxClients:100,notes:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
@@ -586,15 +595,33 @@ function AdminPanel({user, onBack}) {
                   </div>
                 </div>
                 <div className="fg">
-                  <label className="fl">الباقة</label>
-                  <div style={{display:"flex",gap:8}}>
+                  <label className="fl">الباقة (اختر أو حدد يدوياً)</label>
+                  <div style={{display:"flex",gap:8,marginBottom:10}}>
                     {PLANS.map(p=>(
-                      <button key={p.id} type="button" className={`plan-btn${form.plan===p.id?" on":""}`}
-                        onClick={()=>setForm(f=>({...f,plan:p.id}))}>
+                      <button key={p.id} type="button" className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
+                        onClick={()=>setForm(f=>({...f,plan:p.id,customDays:""}))}>
                         {p.id==="3m"?"🥉":p.id==="6m"?"🥈":"🥇"}<br/>{p.label}
                       </button>
                     ))}
                   </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <input className="fi" type="number" inputMode="numeric"
+                      placeholder="أو أدخل عدد الأيام يدوياً (مثال: 45)"
+                      value={form.customDays||""}
+                      onChange={e=>setForm(f=>({...f,customDays:e.target.value,plan:""}))}
+                      style={{flex:1}}/>
+                    <span style={{fontSize:12,color:"var(--gray)",whiteSpace:"nowrap"}}>يوم</span>
+                  </div>
+                  {(form.plan||form.customDays)&&(
+                    <div style={{marginTop:6,fontSize:12,color:"var(--ok)"}}>
+                      ✅ ينتهي في: {(() => {
+                        const d = new Date();
+                        if (form.customDays) d.setDate(d.getDate()+parseInt(form.customDays));
+                        else { const p=PLANS.find(x=>x.id===form.plan); if(p) d.setMonth(d.getMonth()+p.months); }
+                        return d.toLocaleDateString("ar-LY");
+                      })()}
+                    </div>
+                  )}
                 </div>
                 <div className="fg">
                   <label className="fl">الحد الأقصى للعملاء</label>
@@ -780,7 +807,6 @@ function ViewClient({c,onClose,onEdit}) {
           ))}
         </div>
         <div className="dfoot">
-          <button className="bs" onClick={()=>generatePDF(null,c)} title="طباعة بيانات العميل">🖨️ PDF</button>
           <button className="bs" onClick={onClose}>إغلاق</button>
           <button className="bsv" onClick={()=>{onClose();onEdit(c);}}>✏️ تعديل</button>
         </div>
@@ -1105,9 +1131,6 @@ export default function App() {
               <h1 className="pt">قائمة <span>العملاء</span></h1>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {synced&&<span className="syn">🔄 متزامن</span>}
-                <button className="eb" onClick={()=>generatePDF(clients)}>🖨️ PDF</button>
-                <button className="eb" onClick={()=>exportCSV(clients)}>📤 CSV</button>
-                <button className="eb" onClick={()=>downloadBackup(clients,user.email)}>💾 نسخة احتياطية</button>
                 {canWrite&&!atLimit&&<button className="add-btn" onClick={()=>{setSel(null);setModal("add");}}>＋ إضافة</button>}
               </div>
             </div>
