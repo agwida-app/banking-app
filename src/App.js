@@ -456,7 +456,7 @@ function ActivationScreen({user, onActivated}) {
           <h3>أدخل كود التفعيل</h3>
           <p>احصل على الكود من المسؤول وأدخله أدناه لتفعيل اشتراكك.</p>
           {err&&<div className="me">{err}</div>}
-          <input className="code-input" placeholder="XXXX-XXXX" value={code}
+          <input className="code-input" placeholder="XXXXXXXX" value={code}
             onChange={e=>setCode(e.target.value.toUpperCase())}
             onKeyDown={e=>e.key==="Enter"&&activate()} autoCapitalize="characters" autoCorrect="off"/>
           <button className="bp" style={{marginTop:14}} onClick={activate} disabled={load}>
@@ -485,8 +485,7 @@ function AdminPanel({user, onBack}) {
 
   const genCode=()=>{
     const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    const p=(n)=>Array.from({length:n},()=>c[Math.floor(Math.random()*c.length)]).join("");
-    return `${p(4)}-${p(4)}`;
+    return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
   };
 
   const createSub=async()=>{
@@ -563,7 +562,15 @@ function AdminPanel({user, onBack}) {
               <div className="sub-card-header">
                 <div>
                   <span className="sub-code">{s.code||s.id}</span>
-                  {s.planLabel&&<span style={{marginRight:8,fontSize:11,color:"var(--gray)",background:"rgba(255,255,255,.06)",padding:"2px 8px",borderRadius:20}}>{s.planLabel}</span>}
+                  <button onClick={()=>{
+                    navigator.clipboard.writeText(s.code||s.id);
+                    notify("تم نسخ الكود ✅");
+                  }} style={{background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",
+                    borderRadius:7,color:"var(--gold)",cursor:"pointer",padding:"3px 8px",
+                    fontSize:14,marginRight:8,verticalAlign:"middle"}} title="نسخ الكود">
+                    📋
+                  </button>
+                  {s.planLabel&&<span style={{fontSize:11,color:"var(--gray)",background:"rgba(255,255,255,.06)",padding:"2px 8px",borderRadius:20}}>{s.planLabel}</span>}
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {isActive&&<span className="status-chip chip-ok">✅ مفعّل</span>}
@@ -596,7 +603,7 @@ function AdminPanel({user, onBack}) {
                 <div className="fg">
                   <label className="fl">كود التفعيل</label>
                   <div style={{display:"flex",gap:8}}>
-                    <input className="fi ltr" placeholder="XXXX-XXXX" value={form.code}
+                    <input className="fi ltr" placeholder="XXXXXXXX" value={form.code}
                       onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))}
                       style={{flex:1,letterSpacing:2}}/>
                     <button className="bs" onClick={()=>setForm(f=>({...f,code:genCode()}))}>🎲</button>
