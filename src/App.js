@@ -923,7 +923,16 @@ export default function App() {
 
   const notify=useCallback((msg,type="ok")=>setNotif({msg,type}),[]);
 
-  useEffect(()=>{return onAuthStateChanged(auth,u=>{setUser(u);setReady(true);});},[]);
+  useEffect(()=>{
+    return onAuthStateChanged(auth,u=>{
+      setUser(u);
+      setReady(true);
+      if(!u){
+        setSubStatus(null);
+        setSynced(false);
+      }
+    });
+  },[]);
 
   // Generate unique device ID (stored in localStorage)
   const getDeviceId = useCallback(()=>{
@@ -1062,13 +1071,13 @@ export default function App() {
   const totalAmt=clients.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
   const bankNames=[...new Set(clients.map(c=>c.bankType==="أخرى"?c.bankTypeOther||"أخرى":c.bankType).filter(Boolean))];
 
-  if(!ready||subStatus===null)return(
+  if(!ready)return(
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a1628"}}>
       <style>{CSS}</style><span className="spin spin2" style={{width:36,height:36,borderWidth:3}}/>
     </div>
   );
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
-  if(subStatus==="none")return <ActivationScreen user={user} onActivated={()=>setSubStatus("checking")}/>;
+  if(subStatus==="none")return <ActivationScreen user={user} onActivated={()=>setSubStatus(null)}/>;
   if(subStatus==="device_limit")return(
     <div className="aw"><style>{CSS}</style>
       <div className="ac">
