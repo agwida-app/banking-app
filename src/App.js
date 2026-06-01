@@ -1131,6 +1131,7 @@ export default function App() {
               <h1 className="pt">قائمة <span>العملاء</span></h1>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {synced&&<span className="syn">🔄 متزامن</span>}
+                <button className="eb" onClick={()=>exportCSV(clients)}>📤 CSV</button>
                 {canWrite&&!atLimit&&<button className="add-btn" onClick={()=>{setSel(null);setModal("add");}}>＋ إضافة</button>}
               </div>
             </div>
