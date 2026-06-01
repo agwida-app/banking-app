@@ -5,7 +5,7 @@ import {
   signOut, onAuthStateChanged, sendPasswordResetEmail,
 } from "firebase/auth";
 import {
-  collection, addDoc, updateDoc, deleteDoc, getDoc,
+  collection, addDoc, updateDoc, deleteDoc, getDoc, setDoc,
   doc, query, where, orderBy, serverTimestamp, onSnapshot
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -504,14 +504,16 @@ function AdminPanel({user, onBack}) {
         expDate=addMonths(plan.months);
         planLabel=plan.label;
       }
-      await addDoc(collection(db,"subscriptions"),{
-        code:form.code.trim().toUpperCase(),
+      const codeKey = form.code.trim().toUpperCase();
+      await setDoc(doc(db,"subscriptions",codeKey),{
+        code:codeKey,
         plan:form.plan||"custom",
         planLabel,
         maxClients:parseInt(form.maxClients)||100,
         expiresAt:expDate,
         usedBy:null,usedAt:null,usedByEmail:null,
-        createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes
+        createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,
+        devices:{}
       });
       notify("تم إنشاء الكود ✅");
       setModal(false);setForm({code:"",plan:"3m",customDays:"",maxClients:100,notes:""});
