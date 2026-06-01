@@ -11,7 +11,7 @@ import {
 import { auth, db } from "./firebase";
 
 // ── ADMIN UID — ضع هنا الـ UID الخاص بك من Firebase Auth ──
-const ADMIN_UID = "REPLACE_WITH_YOUR_UID";
+const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
 
 const BANKS = [
   "التجاري الوطني","الجمهورية","الأمان","الوحدة",
