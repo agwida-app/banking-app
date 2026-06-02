@@ -1177,6 +1177,9 @@ export default function App() {
     return()=>{u1();};
   },[user,subStatus]);
 
+  const canWrite=subStatus==="active";
+  const atLimit=maxClients&&clients.length>=maxClients;
+
   const handleAdd=useCallback(async(form)=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
     if(atLimit){notify(`وصلت للحد الأقصى (${maxClients} عميل). تواصل مع المسؤول للترقية`,"err");return;}
@@ -1187,9 +1190,6 @@ export default function App() {
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   },[user,notify,canWrite,atLimit,maxClients]);
-
-  const canWrite=subStatus==="active";
-  const atLimit=maxClients&&clients.length>=maxClients;
 
   const handleEdit=useCallback(async(form)=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
