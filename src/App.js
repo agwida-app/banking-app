@@ -92,11 +92,11 @@ const CSS = `
   --border:rgba(201,168,76,0.2);--card:rgba(255,255,255,0.03);
 }
 .light{
-  --bg:#eef2f9;--navy2:#ffffff;--navy3:#dde4f0;
-  --gold:#b8860b;--gold2:#d4a017;
-  --white:#1a1a2e;--gray:#6b7a99;--gray2:#4a5568;
-  --ok:#27ae60;--err:#c0392b;--warn:#d68910;--sold:#adb5c7;
-  --border:rgba(184,134,11,0.25);--card:rgba(0,0,0,0.03);
+  --bg:#f0f4fa;--navy2:#ffffff;--navy3:#e8eef8;
+  --gold:#9a6f00;--gold2:#b8860b;
+  --white:#111827;--gray:#4b5563;--gray2:#1f2937;
+  --ok:#166534;--err:#991b1b;--warn:#92400e;--sold:#6b7280;
+  --border:rgba(154,111,0,0.2);--card:rgba(0,0,0,0.04);
 }
 html,body,#root{font-family:'Tajawal',sans-serif;direction:rtl;min-height:100%}
 body{background:var(--bg);color:var(--white);min-height:100vh;transition:background .25s,color .25s}
@@ -169,7 +169,7 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .fi.ef{border-color:var(--err)!important}
 .et{color:#ff8a80;font-size:11px;margin-top:2px;display:block}
 textarea.fi{resize:none}
-.light .fi{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);color:var(--white)}
+.light .fi{background:#fff;border-color:rgba(0,0,0,.18);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 .bp{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1628;
   border:none;border-radius:10px;padding:13px;font-family:'Tajawal',sans-serif;
@@ -192,7 +192,7 @@ textarea.fi{resize:none}
 .sidebar{width:225px;background:rgba(6,15,30,.99);border-left:1px solid var(--border);
   display:flex;flex-direction:column;padding:18px 13px;position:fixed;right:0;top:0;bottom:0;
   z-index:100;transition:transform .25s ease}
-.light .sidebar{background:rgba(225,232,248,.99)}
+.light .sidebar{background:#ffffff;border-left:1px solid #d1dae8;box-shadow:2px 0 12px rgba(0,0,0,.08)}
 .sl{display:flex;align-items:center;gap:9px;padding:0 5px 18px;border-bottom:1px solid var(--border);margin-bottom:18px}
 .sl-i{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden}
 .sl-t h2{font-size:13px;font-weight:900;color:var(--white)}
@@ -220,7 +220,7 @@ textarea.fi{resize:none}
 .mh{display:none;position:fixed;top:0;left:0;right:0;background:rgba(6,15,30,.98);
   border-bottom:1px solid var(--border);padding:11px 15px;align-items:center;
   justify-content:space-between;z-index:200;backdrop-filter:blur(10px)}
-.light .mh{background:rgba(225,232,248,.98)}
+.light .mh{background:rgba(255,255,255,.97);border-bottom:1px solid #d1dae8;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .mb{background:none;border:1px solid var(--border);border-radius:7px;color:var(--gold);
   cursor:pointer;font-size:17px;padding:4px 9px}
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99}
@@ -244,7 +244,7 @@ textarea.fi{resize:none}
 .fs{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;
   padding:10px 12px;color:var(--white);font-family:'Tajawal',sans-serif;font-size:13px;outline:none;cursor:pointer;-webkit-appearance:none}
 .fs option{background:var(--navy2)}
-.light .fs{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);color:var(--white)}
+.light .fs{background:#fff;border-color:rgba(0,0,0,.18);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 .tw{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow-x:auto}
 .tw table{width:100%;border-collapse:collapse}
@@ -275,6 +275,19 @@ textarea.fi{resize:none}
 .dbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px 8px}
 .dfoot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:var(--navy2)}
 .light .dfoot{background:#fff}
+.light .tw{background:#fff;border-color:#d1dae8;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.light .tw th{background:#f0f5ff;color:var(--gold);border-bottom:2px solid #d1dae8}
+.light .tw td{color:#1f2937;border-top-color:#e8eef8}
+.light .tw td.nm{color:#111827}
+.light .sc{background:#fff;border-color:#d1dae8;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.light .sub-card{background:#fff;border-color:#d1dae8;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.light .log{background:#fff;border-color:#d1dae8}
+.light .ni{color:#374151}
+.light .ni.on{background:rgba(154,111,0,.1);color:var(--gold)}
+.light .bs{background:#f0f4fa;border-color:#d1dae8;color:#111827}
+.light .ib{border-color:#d1dae8;color:#374151}
+.light .eb{background:#f8faff;border-color:#d1dae8}
+.light .dc{background:#f0f4fa;border-color:#d1dae8;color:#374151}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 @media(max-width:500px){.g2{grid-template-columns:1fr}}
 .g2 .full{grid-column:1/-1}
@@ -344,13 +357,14 @@ function generatePDF(clients, single = null) {
         <td>${bank||"—"}</td>
         <td style="direction:ltr;font-family:monospace;font-size:11px">${c.phone1||"—"}</td>
         <td style="direction:ltr;font-family:monospace;font-size:10px">${c.nationalId||"—"}</td>
-        <td style="direction:ltr;font-family:monospace;font-size:10px">${c.iban||"—"}</td>
         <td style="font-weight:700;color:#c9a84c">${c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
         <td>${c.paymentType||"—"}</td>
-        <td style="direction:ltr;font-family:monospace;font-weight:700">${c.pinCode||"—"}</td>
         <td><span style="background:${statusColor}18;color:${statusColor};border:1px solid ${statusColor}40;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${status}</span></td>
+        <td style="direction:ltr;font-family:monospace;font-weight:700">${c.pinCode||"—"}</td>
+        <td style="direction:ltr;font-family:monospace;font-size:10px">${c.iban||"—"}</td>
         <td style="font-size:11px;color:#555">${c.soldTo||"—"}</td>
         <td style="font-size:11px;color:#555">${c.purchasedBy||"—"}</td>
+        <td style="font-size:11px;color:#555;max-width:120px">${c.notes||"—"}</td>
       </tr>`;
   }).join("");
 
@@ -390,45 +404,42 @@ function generatePDF(clients, single = null) {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#f0f4f8;color:#1a1a2e;font-size:13px;min-height:100vh}
-  .page{background:#fff;max-width:1100px;margin:0 auto;padding:28px;min-height:100vh}
-  /* HEADER */
+  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#f0f4f8;color:#1a1a2e;font-size:13px}
+  .page{background:#fff;max-width:1200px;margin:0 auto;padding:24px}
+  .back-btn{display:inline-flex;align-items:center;gap:6px;background:#0a1628;color:#e8c96a;
+    border:none;border-radius:8px;padding:8px 16px;font-family:'Tajawal',sans-serif;
+    font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;text-decoration:none}
+  .back-btn:hover{background:#162d52}
   .header{display:flex;align-items:center;justify-content:space-between;
     background:linear-gradient(135deg,#0a1628,#162d52);border-radius:14px;
-    padding:20px 24px;margin-bottom:20px;color:#fff}
-  .header-left h1{font-size:20px;font-weight:900;color:#e8c96a;margin-bottom:4px}
-  .header-left p{font-size:12px;color:#8a9ab5}
-  .header-logo{width:52px;height:52px;background:linear-gradient(135deg,#c9a84c,#e8c96a);
-    border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
-  /* STATS */
-  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
-  .stat{background:linear-gradient(135deg,#f8f9ff,#eef2ff);border:1px solid #dde4f0;
-    border-radius:10px;padding:12px;text-align:center;border-top:3px solid #c9a84c}
-  .stat .num{font-size:20px;font-weight:900;color:#c9a84c}
+    padding:18px 22px;margin-bottom:18px;color:#fff}
+  .header-left h1{font-size:18px;font-weight:900;color:#e8c96a;margin-bottom:3px}
+  .header-left p{font-size:11px;color:#8a9ab5}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:18px}
+  .stat{background:#f8f9ff;border:1px solid #dde4f0;border-radius:10px;padding:11px;
+    text-align:center;border-top:3px solid #c9a84c}
+  .stat .num{font-size:19px;font-weight:900;color:#c9a84c}
   .stat .lbl{font-size:10px;color:#6b7a99;margin-top:2px}
-  /* TABLE */
-  .table-wrap{border-radius:12px;overflow:hidden;border:1px solid #dde4f0;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  table{width:100%;border-collapse:collapse}
+  .table-wrap{border-radius:12px;overflow:hidden;border:1px solid #dde4f0;
+    margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
   thead tr{background:linear-gradient(135deg,#0a1628,#162d52)}
-  th{padding:11px 10px;text-align:right;font-size:11px;font-weight:700;color:#e8c96a;white-space:nowrap}
-  td{padding:9px 10px;border-bottom:1px solid #eef2f9;font-size:12px;color:#2d3748;vertical-align:middle}
-  tbody tr:hover td{background:#f0f4ff}
-  /* DETAIL */
-  .detail-box{border:1px solid #dde4f0;border-radius:12px;overflow:hidden;margin-bottom:20px}
-  .detail-header{background:linear-gradient(135deg,#0a1628,#162d52);color:#e8c96a;padding:12px 18px;font-size:14px;font-weight:700}
-  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-  .detail-item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px;border-bottom:1px solid #eef2f9}
+  th{padding:10px 8px;text-align:right;font-size:10px;font-weight:700;color:#e8c96a;white-space:nowrap;overflow:hidden}
+  td{padding:8px;border-bottom:1px solid #eef2f9;font-size:11px;color:#2d3748;
+    vertical-align:middle;word-break:break-word}
+  .detail-box{border:1px solid #dde4f0;border-radius:12px;overflow:hidden;margin-bottom:18px}
+  .detail-header{background:linear-gradient(135deg,#0a1628,#162d52);color:#e8c96a;padding:11px 16px;font-size:13px;font-weight:700}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr}
+  .detail-item{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid #eef2f9}
   .detail-item:nth-child(even){background:#f9faff}
-  .detail-label{color:#6b7a99;font-size:12px;font-weight:600;min-width:130px;flex-shrink:0}
-  .detail-val{color:#1a1a2e;font-size:13px;font-weight:500}
-  /* FOOTER */
-  .footer{display:flex;justify-content:space-between;align-items:center;
-    border-top:2px solid #e8c96a;padding-top:12px;font-size:11px;color:#9aa3b0}
-  .footer strong{color:#c9a84c}
+  .detail-label{color:#6b7a99;font-size:11px;font-weight:600;min-width:120px;flex-shrink:0}
+  .detail-val{color:#1a1a2e;font-size:12px;font-weight:500;word-break:break-all}
+  .footer{display:flex;justify-content:space-between;border-top:2px solid #e8c96a;
+    padding-top:10px;font-size:10px;color:#9aa3b0}
   @media print{
+    .back-btn{display:none}
     body{background:#fff}
-    .page{padding:15px;max-width:100%}
-    .no-print{display:none}
+    .page{padding:12px;max-width:100%}
     thead{display:table-header-group}
     tr{page-break-inside:avoid}
   }
@@ -436,12 +447,13 @@ function generatePDF(clients, single = null) {
 </head>
 <body>
 <div class="page">
+  <button class="back-btn" onclick="window.close()">← رجوع للتطبيق</button>
+
   <div class="header">
     <div class="header-left">
       <h1>💳 ${title}</h1>
       <p>تاريخ التقرير: ${date} &nbsp;·&nbsp; إجمالي: ${list.length} عميل</p>
     </div>
-    <div class="header-logo">💳</div>
   </div>
 
   ${!single ? `
@@ -456,11 +468,19 @@ function generatePDF(clients, single = null) {
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th style="width:35px">#</th>
-        <th>الاسم</th><th>المصرف</th><th>الهاتف</th>
-        <th>الرقم الوطني</th><th>IBAN</th><th>المبلغ</th>
-        <th>نوع الحجز</th><th>الرقم السري</th><th>الحالة</th>
-        <th>بيعت إلى</th><th>اشترى من طرف</th>
+        <th style="width:30px">#</th>
+        <th style="width:12%">الاسم</th>
+        <th style="width:9%">المصرف</th>
+        <th style="width:10%">الهاتف</th>
+        <th style="width:11%">الرقم الوطني</th>
+        <th style="width:8%">المبلغ</th>
+        <th style="width:7%">نوع الحجز</th>
+        <th style="width:8%">الحالة</th>
+        <th style="width:7%">الرقم السري</th>
+        <th style="width:13%">IBAN</th>
+        <th style="width:8%">بيعت إلى</th>
+        <th style="width:8%">اشترى من طرف</th>
+        <th style="width:9%">ملاحظات</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -469,8 +489,8 @@ function generatePDF(clients, single = null) {
   ${detailSection}
 
   <div class="footer">
-    <span>تطبيق <strong>إدارة بطاقاتك</strong></span>
-    <span>تم الإنشاء بتاريخ ${date}</span>
+    <span>تطبيق إدارة بطاقاتك</span>
+    <span>${date}</span>
   </div>
 </div>
 </body></html>`;
@@ -479,7 +499,6 @@ function generatePDF(clients, single = null) {
   if (!win) { alert("يرجى السماح بفتح النوافذ المنبثقة في المتصفح"); return; }
   win.document.write(html);
   win.document.close();
-  setTimeout(() => win.print(), 1000);
 }
 
 // ─── BACKUP ───────────────────────────────────────────────────
