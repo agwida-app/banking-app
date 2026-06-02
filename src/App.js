@@ -333,27 +333,31 @@ function generatePDF(clients, single = null) {
   const date = new Date().toLocaleDateString("ar-LY");
   const title = single ? `بيانات العميل: ${single.name}` : "تقرير قائمة العملاء";
 
-  const rows = list.map(c => {
+  const rows = list.map((c,i) => {
     const bank = c.bankType==="أخرى" ? (c.bankTypeOther||"أخرى") : c.bankType;
+    const status = c.isSold ? "مباع" : c.cardBooked ? "تم الحجز" : "لم يتم";
+    const statusColor = c.isSold ? "#e74c3c" : c.cardBooked ? "#27ae60" : "#f39c12";
     return `
-      <tr>
-        <td>${c.name||"—"}</td>
+      <tr style="background:${i%2===0?"#fff":"#f8f9ff"}">
+        <td style="text-align:center;color:#888;font-size:11px">${i+1}</td>
+        <td style="font-weight:700;color:#0a1628">${c.name||"—"}</td>
         <td>${bank||"—"}</td>
-        <td style="direction:ltr;font-family:monospace">${c.phone1||"—"}</td>
-        <td>${c.nationalId||"—"}</td>
+        <td style="direction:ltr;font-family:monospace;font-size:11px">${c.phone1||"—"}</td>
+        <td style="direction:ltr;font-family:monospace;font-size:10px">${c.nationalId||"—"}</td>
         <td style="direction:ltr;font-family:monospace;font-size:10px">${c.iban||"—"}</td>
-        <td>${c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
+        <td style="font-weight:700;color:#c9a84c">${c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
         <td>${c.paymentType||"—"}</td>
-        <td>${c.cardBooked?"✅ تم":"⏳ لم يتم"}</td>
-        <td>${c.isSold?"🔴 مباع":"🟢 متاح"}</td>
-        <td style="direction:ltr;font-family:monospace">${c.pinCode||"—"}</td>
+        <td style="direction:ltr;font-family:monospace;font-weight:700">${c.pinCode||"—"}</td>
+        <td><span style="background:${statusColor}18;color:${statusColor};border:1px solid ${statusColor}40;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${status}</span></td>
+        <td style="font-size:11px;color:#555">${c.soldTo||"—"}</td>
+        <td style="font-size:11px;color:#555">${c.purchasedBy||"—"}</td>
       </tr>`;
   }).join("");
 
   const detailSection = single ? `
     <div class="detail-box">
-      <h3>بيانات تفصيلية</h3>
-      <table class="detail-table">
+      <div class="detail-header">📋 البيانات التفصيلية</div>
+      <div class="detail-grid">
         ${[
           ["الاسم الكامل", single.name],
           ["المصرف", single.bankType==="أخرى"?(single.bankTypeOther||"أخرى"):single.bankType],
@@ -365,82 +369,117 @@ function generatePDF(clients, single = null) {
           ["المبلغ المدفوع", single.amount?`${parseFloat(single.amount).toLocaleString()} ${single.currency}`:"—"],
           ["تم الشراء من طرف", single.purchasedBy||"—"],
           ["نوع الحجز", single.paymentType||"—"],
-          ["حالة البطاقة", single.cardBooked?"تم الحجز":"لم يتم بعد"],
+          ["حالة البطاقة", single.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
           ["تاريخ الحجز", single.bookingDate||"—"],
           ["الرقم السري", single.pinCode||"—"],
-          ["حالة البيع", single.isSold?"تم البيع":"لم يُباع"],
+          ["حالة البيع", single.isSold?"🔴 تم البيع":"🟢 لم يُباع"],
           ["بيعت إلى", single.soldTo||"—"],
           ["ملاحظات", single.notes||"—"],
           ["تاريخ الإضافة", fmt(single.createdAt)],
           ["أضيف بواسطة", single.createdBy||"—"],
-        ].map(([l,v])=>`<tr><td class="label">${l}</td><td>${v}</td></tr>`).join("")}
-      </table>
+        ].map(([l,v])=>`<div class="detail-item"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join("")}
+      </div>
     </div>` : "";
 
   const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet"/>
 <style>
-  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;margin:0;padding:20px;background:#fff;color:#1a1a2e;font-size:13px}
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #c9a84c;padding-bottom:14px;margin-bottom:20px}
-  .header-title h1{font-size:20px;font-weight:900;color:#0a1628;margin:0}
-  .header-title p{font-size:12px;color:#6b7a99;margin-top:3px}
-  .header-logo{width:50px;height:50px;background:linear-gradient(135deg,#c9a84c,#e8c96a);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
-  .stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
-  .stat-box{flex:1;min-width:100px;background:#f5f7ff;border:1px solid #dde4f0;border-radius:10px;padding:12px;text-align:center}
-  .stat-box .num{font-size:22px;font-weight:900;color:#c9a84c}
-  .stat-box .lbl{font-size:11px;color:#6b7a99;margin-top:2px}
-  table{width:100%;border-collapse:collapse;margin-bottom:20px}
-  th{background:#0a1628;color:#c9a84c;padding:10px 12px;font-size:11px;font-weight:700;text-align:right}
-  td{padding:9px 12px;border-bottom:1px solid #eef2f9;font-size:12px}
-  tr:nth-child(even) td{background:#f9faff}
-  .detail-box{margin-top:20px;border:1px solid #dde4f0;border-radius:12px;overflow:hidden}
-  .detail-box h3{background:#0a1628;color:#c9a84c;padding:12px 16px;margin:0;font-size:14px}
-  .detail-table{width:100%;border-collapse:collapse}
-  .detail-table td{padding:9px 16px;border-bottom:1px solid #eef2f9;font-size:13px}
-  .detail-table td.label{color:#6b7a99;font-weight:600;width:160px;background:#f9faff}
-  .footer{margin-top:24px;border-top:1px solid #dde4f0;padding-top:12px;font-size:11px;color:#9aa3b0;display:flex;justify-content:space-between}
-  @media print{body{margin:0;padding:15px}.no-print{display:none}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#f0f4f8;color:#1a1a2e;font-size:13px;min-height:100vh}
+  .page{background:#fff;max-width:1100px;margin:0 auto;padding:28px;min-height:100vh}
+  /* HEADER */
+  .header{display:flex;align-items:center;justify-content:space-between;
+    background:linear-gradient(135deg,#0a1628,#162d52);border-radius:14px;
+    padding:20px 24px;margin-bottom:20px;color:#fff}
+  .header-left h1{font-size:20px;font-weight:900;color:#e8c96a;margin-bottom:4px}
+  .header-left p{font-size:12px;color:#8a9ab5}
+  .header-logo{width:52px;height:52px;background:linear-gradient(135deg,#c9a84c,#e8c96a);
+    border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  /* STATS */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+  .stat{background:linear-gradient(135deg,#f8f9ff,#eef2ff);border:1px solid #dde4f0;
+    border-radius:10px;padding:12px;text-align:center;border-top:3px solid #c9a84c}
+  .stat .num{font-size:20px;font-weight:900;color:#c9a84c}
+  .stat .lbl{font-size:10px;color:#6b7a99;margin-top:2px}
+  /* TABLE */
+  .table-wrap{border-radius:12px;overflow:hidden;border:1px solid #dde4f0;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:linear-gradient(135deg,#0a1628,#162d52)}
+  th{padding:11px 10px;text-align:right;font-size:11px;font-weight:700;color:#e8c96a;white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid #eef2f9;font-size:12px;color:#2d3748;vertical-align:middle}
+  tbody tr:hover td{background:#f0f4ff}
+  /* DETAIL */
+  .detail-box{border:1px solid #dde4f0;border-radius:12px;overflow:hidden;margin-bottom:20px}
+  .detail-header{background:linear-gradient(135deg,#0a1628,#162d52);color:#e8c96a;padding:12px 18px;font-size:14px;font-weight:700}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .detail-item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px;border-bottom:1px solid #eef2f9}
+  .detail-item:nth-child(even){background:#f9faff}
+  .detail-label{color:#6b7a99;font-size:12px;font-weight:600;min-width:130px;flex-shrink:0}
+  .detail-val{color:#1a1a2e;font-size:13px;font-weight:500}
+  /* FOOTER */
+  .footer{display:flex;justify-content:space-between;align-items:center;
+    border-top:2px solid #e8c96a;padding-top:12px;font-size:11px;color:#9aa3b0}
+  .footer strong{color:#c9a84c}
+  @media print{
+    body{background:#fff}
+    .page{padding:15px;max-width:100%}
+    .no-print{display:none}
+    thead{display:table-header-group}
+    tr{page-break-inside:avoid}
+  }
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-title">
-    <h1>🏦 ${title}</h1>
-    <p>تاريخ التقرير: ${date} · إجمالي: ${list.length} عميل</p>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>💳 ${title}</h1>
+      <p>تاريخ التقرير: ${date} &nbsp;·&nbsp; إجمالي: ${list.length} عميل</p>
+    </div>
+    <div class="header-logo">💳</div>
   </div>
-  <div class="header-logo">🏦</div>
-</div>
-${!single ? `
-<div class="stats-row">
-  <div class="stat-box"><div class="num">${list.length}</div><div class="lbl">إجمالي العملاء</div></div>
-  <div class="stat-box"><div class="num">${list.filter(c=>c.cardBooked&&!c.isSold).length}</div><div class="lbl">تم الحجز</div></div>
-  <div class="stat-box"><div class="num">${list.filter(c=>!c.cardBooked&&!c.isSold).length}</div><div class="lbl">لم يتم الحجز</div></div>
-  <div class="stat-box"><div class="num">${list.filter(c=>c.isSold).length}</div><div class="lbl">تم البيع</div></div>
-  <div class="stat-box"><div class="num">${list.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0).toLocaleString("ar-LY")}</div><div class="lbl">إجمالي المبالغ (د.ل)</div></div>
-</div>` : ""}
-<table>
-  <thead><tr>
-    <th>الاسم</th><th>المصرف</th><th>الهاتف</th><th>الرقم الوطني</th>
-    <th>IBAN</th><th>المبلغ</th><th>نوع الحجز</th><th>البطاقة</th><th>البيع</th><th>الرقم السري</th>
-  </tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-${detailSection}
-<div class="footer">
-  <span>نظام إدارة العملاء المصرفيين</span>
-  <span>تم إنشاؤه بتاريخ ${date}</span>
+
+  ${!single ? `
+  <div class="stats">
+    <div class="stat"><div class="num">${list.length}</div><div class="lbl">إجمالي العملاء</div></div>
+    <div class="stat"><div class="num" style="color:#27ae60">${list.filter(c=>c.cardBooked&&!c.isSold).length}</div><div class="lbl">تم الحجز</div></div>
+    <div class="stat"><div class="num" style="color:#f39c12">${list.filter(c=>!c.cardBooked&&!c.isSold).length}</div><div class="lbl">لم يتم الحجز</div></div>
+    <div class="stat"><div class="num" style="color:#e74c3c">${list.filter(c=>c.isSold).length}</div><div class="lbl">تم البيع</div></div>
+    <div class="stat"><div class="num">${list.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0).toLocaleString("ar-LY")}</div><div class="lbl">إجمالي المبالغ د.ل</div></div>
+  </div>` : ""}
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:35px">#</th>
+        <th>الاسم</th><th>المصرف</th><th>الهاتف</th>
+        <th>الرقم الوطني</th><th>IBAN</th><th>المبلغ</th>
+        <th>نوع الحجز</th><th>الرقم السري</th><th>الحالة</th>
+        <th>بيعت إلى</th><th>اشترى من طرف</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+
+  ${detailSection}
+
+  <div class="footer">
+    <span>تطبيق <strong>إدارة بطاقاتك</strong></span>
+    <span>تم الإنشاء بتاريخ ${date}</span>
+  </div>
 </div>
 </body></html>`;
 
   const win = window.open("","_blank");
-  if (!win) { alert("يرجى السماح بفتح النوافذ المنبثقة"); return; }
+  if (!win) { alert("يرجى السماح بفتح النوافذ المنبثقة في المتصفح"); return; }
   win.document.write(html);
   win.document.close();
-  setTimeout(() => win.print(), 800);
+  setTimeout(() => win.print(), 1000);
 }
 
 // ─── BACKUP ───────────────────────────────────────────────────
@@ -459,12 +498,46 @@ function downloadBackup(clients, email) {
 }
 
 function exportCSV(clients) {
-  const H=["الاسم","المصرف","الهاتف1","الهاتف2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","نوع الحجز","حالة البطاقة","تاريخ الحجز","الرقم السري","بيعت إلى","تم البيع","ملاحظات"];
-  const R=clients.map(c=>[c.name,c.bankType==="أخرى"?c.bankTypeOther||"":c.bankType,c.phone1,c.phone2||"",c.nationalId,c.accountNumber||"",c.iban||"",c.amount||"",c.currency,c.purchasedBy||"",c.paymentType||"",c.cardBooked?"تم الحجز":"لم يتم",c.bookingDate||"",c.pinCode||"",c.soldTo||"",c.isSold?"نعم":"لا",c.notes||""]);
-  const csv=[H,...R].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
-  a.download=`clients_${Date.now()}.csv`;a.click();
+  // RTL headers — reversed order so rightmost column appears first visually
+  const H=["الاسم","المصرف","الهاتف 1","الهاتف 2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","نوع الحجز","حالة البطاقة","تاريخ الحجز","الرقم السري","بيعت إلى","تم البيع","ملاحظات"];
+  const R=clients.map(c=>[
+    c.name||"",
+    c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType||"",
+    c.phone1||"",
+    c.phone2||"",
+    c.nationalId||"",
+    c.accountNumber||"",
+    c.iban||"",
+    c.amount||"",
+    c.currency||"د.ل",
+    c.purchasedBy||"",
+    c.paymentType||"",
+    c.cardBooked?"تم الحجز":"لم يتم",
+    c.bookingDate||"",
+    c.pinCode||"",
+    c.soldTo||"",
+    c.isSold?"نعم":"لا",
+    c.notes||""
+  ]);
+  // BOM + CSV with proper encoding for Arabic on all devices
+  const csv=[H,...R].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
+  // iOS/Android compatible download
+  if(navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)){
+    const file = new File([blob], `clients_${Date.now()}.csv`, {type:"text/csv;charset=utf-8;"});
+    navigator.share({files:[file], title:"قائمة العملاء"}).catch(()=>{
+      // fallback
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=`clients_${Date.now()}.csv`;
+      a.click();
+    });
+  } else {
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`clients_${Date.now()}.csv`;
+    a.click();
+  }
 }
 
 function Notif({n,onClose}) {
@@ -722,6 +795,11 @@ function AdminPanel({user, onBack}) {
                       {isActive&&<span className="status-chip chip-ok">✅ مفعّل</span>}
                       {isFree&&<span className="status-chip chip-free">🔓 متاح</span>}
                       {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
+                      <button className="ib" onClick={()=>{
+                        const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
+                        navigator.clipboard.writeText(msg);
+                        notify("تم نسخ رسالة الترحيب ✅");
+                      }} title="نسخ رسالة الترحيب">✉️</button>
                       <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
                       <button className="ib" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱</button>
                       <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
@@ -1150,10 +1228,11 @@ export default function App() {
   const [notif,setNotif]         = useState(null);
   const [bar,setBar]             = useState(false);
   const [saving,setSaving]       = useState(false);
-  const [dark,setDark]           = useState(true);
+  const [dark,setDark] = useState(()=>localStorage.getItem("theme")!=="light");
   const [search,setSearch]       = useState("");
   const [filterStatus,setFilterStatus] = useState("all");
   const [filterBank,setFilterBank]     = useState("all");
+  const [sortBy,setSortBy]             = useState("newest");
   const [synced,setSynced]       = useState(false);
   const [showAdmin,setShowAdmin] = useState(false);
   const addRef  = useRef(null);
@@ -1292,6 +1371,15 @@ export default function App() {
       ||(filterStatus==="pending"&&!c.cardBooked&&!c.isSold)
       ||(filterStatus==="sold"&&c.isSold);
     return m&&fb&&fs;
+  }).sort((a,b)=>{
+    if(sortBy==="newest") return 0; // already ordered by createdAt desc from Firestore
+    if(sortBy==="oldest"){
+      const ta=a.createdAt?.toDate?a.createdAt.toDate():new Date(a.createdAt||0);
+      const tb=b.createdAt?.toDate?b.createdAt.toDate():new Date(b.createdAt||0);
+      return ta-tb;
+    }
+    if(sortBy==="alpha") return (a.name||"").localeCompare(b.name||"","ar");
+    return 0;
   });
 
   const total=clients.length;
@@ -1359,8 +1447,8 @@ export default function App() {
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
           <div className="su-e">{user.email}</div>
-          <button className="lb" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
-          <button className="lb" onClick={()=>signOut(auth)}>⎋</button>
+          <button className="lb" onClick={()=>setDark(d=>{localStorage.setItem("theme",d?"light":"dark");return !d;})}>{dark?"☀️":"🌙"}</button>
+          <button className="lb" onClick={()=>{if(window.confirm("هل تريد تسجيل الخروج؟"))signOut(auth);}}>⎋</button>
         </div>
       </div>
 
@@ -1416,6 +1504,7 @@ export default function App() {
               <h1 className="pt">قائمة <span>العملاء</span></h1>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {synced&&<span className="syn">🔄 متزامن</span>}
+                <button className="eb" onClick={()=>generatePDF(filtered)}>🖨️ PDF</button>
                 <button className="eb" onClick={()=>exportCSV(clients)}>📤 CSV</button>
                 {canWrite&&!atLimit&&<button className="add-btn" onClick={()=>{setSel(null);setModal("add");}}>＋ إضافة</button>}
               </div>
@@ -1426,6 +1515,11 @@ export default function App() {
                 <input className="fi" placeholder="بحث بالاسم، الجوال، الرقم الوطني، IBAN..."
                   value={search} onChange={e=>setSearch(e.target.value)}/>
               </div>
+              <select className="fs" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
+                <option value="newest">🕐 الأحدث</option>
+                <option value="oldest">🕰 الأقدم</option>
+                <option value="alpha">🔤 أبجدي</option>
+              </select>
               <select className="fs" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
                 <option value="all">الكل ({total})</option>
                 <option value="booked">✅ تم الحجز ({booked})</option>
