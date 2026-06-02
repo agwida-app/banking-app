@@ -577,7 +577,7 @@ function AdminPanel({user, onBack}) {
   const [tab,setTab]         = useState("subs");
   const [modal,setModal]     = useState(null);
   const [form,setForm]       = useState({code:"",plan:"3m",customDays:"",maxClients:100,notes:"",affiliateCode:""});
-  const [affForm,setAffForm] = useState({name:"",handle:"",commissionPct:10,notes:""});
+  const [affForm,setAffForm] = useState({name:"",handle:"",code:"",commissionPct:10,notes:""});
   const [saving,setSaving]   = useState(false);
   const [notif,setNotif]     = useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
@@ -638,9 +638,13 @@ function AdminPanel({user, onBack}) {
 
   const createAffiliate=async()=>{
     if(!affForm.name.trim()){notify("أدخل الاسم","err");return;}
+    if(!affForm.code.trim()){notify("أدخل كود الإحالة","err");return;}
     setSaving(true);
     try{
-      const code=genAffCode(affForm.name);
+      const code=affForm.code.trim().toUpperCase();
+      // Check if code already exists
+      const existing=await getDoc(doc(db,"affiliates",code));
+      if(existing.exists()){notify("هذا الكود مستخدم مسبقاً، اختر كوداً آخر","err");setSaving(false);return;}
       await setDoc(doc(db,"affiliates",code),{
         code,name:affForm.name,handle:affForm.handle,
         commissionPct:parseInt(affForm.commissionPct)||10,
@@ -648,7 +652,7 @@ function AdminPanel({user, onBack}) {
         paidReferrals:0,createdAt:serverTimestamp()
       });
       notify(`تم إنشاء كود المسوّق: ${code} ✅`);
-      setModal(null);setAffForm({name:"",handle:"",commissionPct:10,notes:""});
+      setModal(null);setAffForm({name:"",handle:"",code:"",commissionPct:10,notes:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
@@ -844,6 +848,13 @@ function AdminPanel({user, onBack}) {
                   <label className="fl">اسم المسوّق *</label>
                   <input className="fi" placeholder="مثال: محمد الغانم" value={affForm.name}
                     onChange={e=>setAffForm(f=>({...f,name:e.target.value}))}/>
+                </div>
+                <div className="fg">
+                  <label className="fl">كود الإحالة *</label>
+                  <input className="fi ltr" placeholder="مثال: MOHAMAD10" value={affForm.code}
+                    onChange={e=>setAffForm(f=>({...f,code:e.target.value.toUpperCase().replace(/\s/g,"")}))}
+                    style={{letterSpacing:2}} autoCapitalize="characters" autoCorrect="off"/>
+                  <span style={{fontSize:11,color:"var(--gray)",marginTop:4,display:"block"}}>أحرف وأرقام فقط، بدون مسافات</span>
                 </div>
                 <div className="fg">
                   <label className="fl">اسم الحساب (يوتيوب / انستغرام)</label>
