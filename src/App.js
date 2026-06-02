@@ -518,16 +518,22 @@ function ActivationScreen({user, onActivated}) {
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────
 function AdminPanel({user, onBack}) {
-  const [subs,setSubs]=useState([]);
-  const [modal,setModal]=useState(false);
-  const [form,setForm]=useState({code:"",plan:"3m",customDays:"",maxClients:100,notes:""});
-  const [saving,setSaving]=useState(false);
-  const [notif,setNotif]=useState(null);
+  const [subs,setSubs]       = useState([]);
+  const [affiliates,setAff]  = useState([]);
+  const [tab,setTab]         = useState("subs");
+  const [modal,setModal]     = useState(null);
+  const [form,setForm]       = useState({code:"",plan:"3m",customDays:"",maxClients:100,notes:"",affiliateCode:""});
+  const [affForm,setAffForm] = useState({name:"",handle:"",commissionPct:10,notes:""});
+  const [saving,setSaving]   = useState(false);
+  const [notif,setNotif]     = useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
 
   useEffect(()=>{
-    const q=query(collection(db,"subscriptions"),orderBy("createdAt","desc"));
-    return onSnapshot(q,snap=>setSubs(snap.docs.map(d=>({id:d.id,...d.data()}))));
+    const q1=query(collection(db,"subscriptions"),orderBy("createdAt","desc"));
+    const u1=onSnapshot(q1,snap=>setSubs(snap.docs.map(d=>({id:d.id,...d.data()}))));
+    const q2=query(collection(db,"affiliates"),orderBy("createdAt","desc"));
+    const u2=onSnapshot(q2,snap=>setAff(snap.docs.map(d=>({id:d.id,...d.data()}))));
+    return()=>{u1();u2();};
   },[]);
 
   const genCode=()=>{
@@ -535,42 +541,74 @@ function AdminPanel({user, onBack}) {
     return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
   };
 
+  const genAffCode=(name)=>{
+    const clean=name.replace(/\s+/g,"").toUpperCase().slice(0,6);
+    return `${clean}${Math.floor(Math.random()*90)+10}`;
+  };
+
   const createSub=async()=>{
     if(!form.code.trim()){notify("أدخل الكود","err");return;}
-    if(!form.plan&&!form.customDays){notify("اختر الباقة أو أدخل عدد الأيام","err");return;}
+    if(!form.plan&&!form.customDays){notify("اختر الباقة","err");return;}
     setSaving(true);
     try{
-      let expDate, planLabel;
+      let expDate,planLabel;
       if(form.customDays&&parseInt(form.customDays)>0){
-        expDate=new Date();
-        expDate.setDate(expDate.getDate()+parseInt(form.customDays));
+        expDate=new Date();expDate.setDate(expDate.getDate()+parseInt(form.customDays));
         planLabel=`${form.customDays} يوم (مخصص)`;
-      } else {
+      }else{
         const plan=PLANS.find(p=>p.id===form.plan);
-        expDate=addMonths(plan.months);
-        planLabel=plan.label;
+        expDate=addMonths(plan.months);planLabel=plan.label;
       }
-      const codeKey = form.code.trim().toUpperCase();
+      if(form.affiliateCode.trim()){expDate.setDate(expDate.getDate()+7);planLabel+=" + أسبوع مجاني 🎁";}
+      const codeKey=form.code.trim().toUpperCase();
       await setDoc(doc(db,"subscriptions",codeKey),{
-        code:codeKey,
-        plan:form.plan||"custom",
-        planLabel,
-        maxClients:parseInt(form.maxClients)||100,
-        expiresAt:expDate,
+        code:codeKey,plan:form.plan||"custom",planLabel,
+        maxClients:parseInt(form.maxClients)||100,expiresAt:expDate,
         usedBy:null,usedAt:null,usedByEmail:null,
-        createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,
-        devices:{}
+        affiliateCode:form.affiliateCode.trim().toUpperCase()||null,
+        createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,devices:{}
       });
+      if(form.affiliateCode.trim()){
+        const affRef=doc(db,"affiliates",form.affiliateCode.trim().toUpperCase());
+        const affSnap=await getDoc(affRef);
+        if(affSnap.exists())await updateDoc(affRef,{
+          totalReferrals:(affSnap.data().totalReferrals||0)+1,
+          pendingReferrals:(affSnap.data().pendingReferrals||0)+1
+        });
+      }
       notify("تم إنشاء الكود ✅");
-      setModal(false);setForm({code:"",plan:"3m",customDays:"",maxClients:100,notes:""});
+      setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:100,notes:"",affiliateCode:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
 
+  const createAffiliate=async()=>{
+    if(!affForm.name.trim()){notify("أدخل الاسم","err");return;}
+    setSaving(true);
+    try{
+      const code=genAffCode(affForm.name);
+      await setDoc(doc(db,"affiliates",code),{
+        code,name:affForm.name,handle:affForm.handle,
+        commissionPct:parseInt(affForm.commissionPct)||10,
+        notes:affForm.notes,totalReferrals:0,pendingReferrals:0,
+        paidReferrals:0,createdAt:serverTimestamp()
+      });
+      notify(`تم إنشاء كود المسوّق: ${code} ✅`);
+      setModal(null);setAffForm({name:"",handle:"",commissionPct:10,notes:""});
+    }catch(e){notify("خطأ: "+e.message,"err");}
+    setSaving(false);
+  };
+
+  const markPaid=async(aff)=>{
+    const pending=aff.pendingReferrals||0;
+    if(!pending){notify("لا توجد عمولات معلقة","err");return;}
+    await updateDoc(doc(db,"affiliates",aff.id),{pendingReferrals:0,paidReferrals:(aff.paidReferrals||0)+pending});
+    notify(`تم تسجيل دفع عمولة ${aff.name} ✅`);
+  };
+
   const deleteSub=async(id)=>{
     if(!window.confirm("هل أنت متأكد؟"))return;
-    await deleteDoc(doc(db,"subscriptions",id));
-    notify("تم الحذف","err");
+    await deleteDoc(doc(db,"subscriptions",id));notify("تم الحذف","err");
   };
 
   const renewSub=async(sub)=>{
@@ -585,79 +623,117 @@ function AdminPanel({user, onBack}) {
   return(
     <div className="aw" style={{alignItems:"flex-start",paddingTop:0}}><style>{CSS}</style>
       <div className="admin-wrap">
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
           <h1 style={{fontSize:20,fontWeight:900,color:"var(--gold)"}}>🛡️ لوحة المدير</h1>
           <div style={{display:"flex",gap:8}}>
-            <button className="bsv" onClick={()=>{setForm({...form,code:genCode()});setModal(true);}}>＋ كود جديد</button>
+            {tab==="subs"&&<button className="bsv" onClick={()=>{setForm(f=>({...f,code:genCode()}));setModal("sub");}}>＋ كود جديد</button>}
+            {tab==="affiliates"&&<button className="bsv" onClick={()=>setModal("aff")}>＋ مسوّق جديد</button>}
             <button className="bs" onClick={onBack}>← رجوع</button>
           </div>
         </div>
-        <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
-          الكل: <strong style={{color:"var(--white)"}}>{subs.length}</strong> •
-          مفعّلة: <strong style={{color:"var(--ok)"}}>{subs.filter(s=>s.usedBy&&daysLeft(s.expiresAt)>0).length}</strong> •
-          متاحة: <strong style={{color:"var(--gold)"}}>{subs.filter(s=>!s.usedBy).length}</strong> •
-          منتهية: <strong style={{color:"var(--err)"}}>{subs.filter(s=>daysLeft(s.expiresAt)<=0).length}</strong>
+        <div className="tabs" style={{marginBottom:16}}>
+          <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
+          <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
         </div>
-        {subs.length===0&&<div className="emp"><div className="ei">🔑</div><div className="et2">لا يوجد اشتراكات بعد</div></div>}
-        {subs.map(s=>{
-          const days=daysLeft(s.expiresAt);
-          const isActive=s.usedBy&&days>0;
-          const isExpired=days<=0;
-          const isFree=!s.usedBy&&!isExpired;
-          return(
-            <div key={s.id} className="sub-card">
-              <div className="sub-card-header">
-                <div>
-                  <span className="sub-code">{s.code||s.id}</span>
-                  <button onClick={()=>{
-                    navigator.clipboard.writeText(s.code||s.id);
-                    notify("تم نسخ الكود ✅");
-                  }} style={{background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",
-                    borderRadius:7,color:"var(--gold)",cursor:"pointer",padding:"3px 8px",
-                    fontSize:14,marginRight:8,verticalAlign:"middle"}} title="نسخ الكود">
-                    📋
-                  </button>
-                  {s.planLabel&&<span style={{fontSize:11,color:"var(--gray)",background:"rgba(255,255,255,.06)",padding:"2px 8px",borderRadius:20}}>{s.planLabel}</span>}
-                </div>
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  {isActive&&<span className="status-chip chip-ok">✅ مفعّل</span>}
-                  {isFree&&<span className="status-chip chip-free">🔓 متاح</span>}
-                  {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
-                  <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
-                  <button className="ib" onClick={async()=>{
-                    if(!window.confirm("إعادة ضبط الأجهزة؟ سيُطلب من المستخدم تسجيل دخول من جديد."))return;
-                    await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
-                    notify("تم إعادة ضبط الأجهزة ✅");
-                  }} title="إعادة ضبط الأجهزة">📱</button>
-                  <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
-                </div>
-              </div>
-              <div className="sub-meta">
-                📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
-                👥 الحد الأقصى: {s.maxClients||"غير محدود"} عميل<br/>
-                📱 الأجهزة: {Object.keys(s.devices||{}).length} / 3<br/>
-                {s.usedByEmail&&<>👤 مستخدم بواسطة: {s.usedByEmail}<br/></>}
-                {s.notes&&<>📝 {s.notes}</>}
-              </div>
+
+        {tab==="subs"&&(
+          <>
+            <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
+              الكل: <strong style={{color:"var(--white)"}}>{subs.length}</strong> •
+              مفعّلة: <strong style={{color:"var(--ok)"}}>{subs.filter(s=>s.usedBy&&daysLeft(s.expiresAt)>0).length}</strong> •
+              متاحة: <strong style={{color:"var(--gold)"}}>{subs.filter(s=>!s.usedBy).length}</strong> •
+              منتهية: <strong style={{color:"var(--err)"}}>{subs.filter(s=>daysLeft(s.expiresAt)<=0).length}</strong>
             </div>
-          );
-        })}
-        {modal&&(
-          <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+            {subs.length===0&&<div className="emp"><div className="ei">🔑</div><div className="et2">لا يوجد اشتراكات بعد</div></div>}
+            {subs.map(s=>{
+              const days=daysLeft(s.expiresAt);
+              const isActive=s.usedBy&&days>0;
+              const isExpired=days<=0;
+              const isFree=!s.usedBy&&!isExpired;
+              const aff=affiliates.find(a=>a.code===s.affiliateCode);
+              return(
+                <div key={s.id} className="sub-card">
+                  <div className="sub-card-header">
+                    <div>
+                      <span className="sub-code">{s.code||s.id}</span>
+                      <button onClick={()=>{navigator.clipboard.writeText(s.code||s.id);notify("تم نسخ الكود ✅");}}
+                        style={{background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",borderRadius:7,color:"var(--gold)",cursor:"pointer",padding:"3px 8px",fontSize:14,marginRight:8,verticalAlign:"middle"}}>📋</button>
+                      {s.planLabel&&<span style={{fontSize:11,color:"var(--gray)",background:"rgba(255,255,255,.06)",padding:"2px 8px",borderRadius:20}}>{s.planLabel}</span>}
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      {isActive&&<span className="status-chip chip-ok">✅ مفعّل</span>}
+                      {isFree&&<span className="status-chip chip-free">🔓 متاح</span>}
+                      {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
+                      <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
+                      <button className="ib" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱</button>
+                      <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
+                    </div>
+                  </div>
+                  <div className="sub-meta">
+                    📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
+                    👥 الحد: {s.maxClients||"∞"} عميل • 📱 الأجهزة: {Object.keys(s.devices||{}).length}/3<br/>
+                    {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
+                    {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
+                    {s.notes&&<>📝 {s.notes}</>}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {tab==="affiliates"&&(
+          <>
+            <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
+              المسوّقون: <strong style={{color:"var(--white)"}}>{affiliates.length}</strong> •
+              إجمالي الإحالات: <strong style={{color:"var(--ok)"}}>{affiliates.reduce((s,a)=>s+(a.totalReferrals||0),0)}</strong> •
+              عمولات معلقة: <strong style={{color:"var(--warn)"}}>{affiliates.reduce((s,a)=>s+(a.pendingReferrals||0),0)}</strong>
+            </div>
+            {affiliates.length===0&&<div className="emp"><div className="ei">🤝</div><div className="et2">لا يوجد مسوّقون بعد</div></div>}
+            {affiliates.map(a=>{
+              const refSubs=subs.filter(s=>s.affiliateCode===a.code);
+              return(
+                <div key={a.id} className="sub-card">
+                  <div className="sub-card-header">
+                    <div>
+                      <span style={{fontWeight:900,color:"var(--white)",fontSize:15}}>{a.name}</span>
+                      {a.handle&&<span style={{fontSize:12,color:"var(--gray)",marginRight:8}}>@{a.handle}</span>}
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <button className="ib" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
+                      {(a.pendingReferrals||0)>0&&<button className="ib" style={{color:"var(--ok)"}} onClick={()=>markPaid(a)}>💰 دفع</button>}
+                      <button className="ib" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");}}>🗑</button>
+                    </div>
+                  </div>
+                  <div className="sub-meta">
+                    💹 العمولة: <strong style={{color:"var(--gold)"}}>{a.commissionPct}%</strong> من كل اشتراك<br/>
+                    📊 إجمالي: <strong style={{color:"var(--white)"}}>{a.totalReferrals||0}</strong> •
+                    معلّق: <strong style={{color:"var(--warn)"}}>{a.pendingReferrals||0}</strong> •
+                    مدفوع: <strong style={{color:"var(--ok)"}}>{a.paidReferrals||0}</strong><br/>
+                    {refSubs.length>0&&<>📋 {refSubs.map(s=><span key={s.id} style={{fontSize:10,background:"rgba(201,168,76,.1)",padding:"1px 6px",borderRadius:10,marginLeft:4,color:"var(--gold)"}}>{s.code}</span>)}<br/></>}
+                    {a.notes&&<>📝 {a.notes}</>}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {modal==="sub"&&(
+          <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div className="drawer">
-              <div className="dhead"><span className="dt">➕ كود اشتراك جديد</span><button className="dc" onClick={()=>setModal(false)}>✕</button></div>
+              <div className="dhead"><span className="dt">➕ كود اشتراك جديد</span><button className="dc" onClick={()=>setModal(null)}>✕</button></div>
               <div className="dbody">
                 <div className="fg">
                   <label className="fl">كود التفعيل</label>
                   <div style={{display:"flex",gap:8}}>
                     <input className="fi ltr" placeholder="XXXXXXXX" value={form.code}
-                      onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))}
-                      style={{flex:1,letterSpacing:2}}/>
+                      onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} style={{flex:1,letterSpacing:2}}/>
                     <button className="bs" onClick={()=>setForm(f=>({...f,code:genCode()}))}>🎲</button>
                   </div>
                 </div>
                 <div className="fg">
-                  <label className="fl">الباقة (اختر أو حدد يدوياً)</label>
+                  <label className="fl">الباقة</label>
                   <div style={{display:"flex",gap:8,marginBottom:10}}>
                     {PLANS.map(p=>(
                       <button key={p.id} type="button" className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
@@ -667,47 +743,90 @@ function AdminPanel({user, onBack}) {
                     ))}
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <input className="fi" type="number" inputMode="numeric"
-                      placeholder="أو أدخل عدد الأيام يدوياً (مثال: 45)"
-                      value={form.customDays||""}
-                      onChange={e=>setForm(f=>({...f,customDays:e.target.value,plan:""}))}
-                      style={{flex:1}}/>
+                    <input className="fi" type="number" inputMode="numeric" placeholder="أو أدخل عدد الأيام يدوياً"
+                      value={form.customDays||""} onChange={e=>setForm(f=>({...f,customDays:e.target.value,plan:""}))} style={{flex:1}}/>
                     <span style={{fontSize:12,color:"var(--gray)",whiteSpace:"nowrap"}}>يوم</span>
                   </div>
                   {(form.plan||form.customDays)&&(
                     <div style={{marginTop:6,fontSize:12,color:"var(--ok)"}}>
-                      ✅ ينتهي في: {(() => {
-                        const d = new Date();
-                        if (form.customDays) d.setDate(d.getDate()+parseInt(form.customDays));
-                        else { const p=PLANS.find(x=>x.id===form.plan); if(p) d.setMonth(d.getMonth()+p.months); }
-                        return d.toLocaleDateString("ar-LY");
-                      })()}
+                      ✅ ينتهي في: {(()=>{const d=new Date();if(form.customDays)d.setDate(d.getDate()+parseInt(form.customDays));else{const p=PLANS.find(x=>x.id===form.plan);if(p)d.setMonth(d.getMonth()+p.months);}if(form.affiliateCode)d.setDate(d.getDate()+7);return d.toLocaleDateString("ar-LY");})()}
+                      {form.affiliateCode&&<span style={{color:"var(--gold)"}}> + أسبوع مجاني 🎁</span>}
                     </div>
                   )}
                 </div>
                 <div className="fg">
                   <label className="fl">الحد الأقصى للعملاء</label>
-                  <input className="fi" type="number" placeholder="مثال: 100" value={form.maxClients}
+                  <input className="fi" type="number" placeholder="100" value={form.maxClients}
                     onChange={e=>setForm(f=>({...f,maxClients:e.target.value}))} inputMode="numeric"/>
                 </div>
                 <div className="fg">
-                  <label className="fl">ملاحظة (اسم العميل مثلاً)</label>
-                  <input className="fi" placeholder="مثال: شركة الأمل" value={form.notes}
+                  <label className="fl">🤝 كود المسوّق (اختياري)</label>
+                  <select className="fi" value={form.affiliateCode} onChange={e=>setForm(f=>({...f,affiliateCode:e.target.value}))}>
+                    <option value="">بدون مسوّق</option>
+                    {affiliates.map(a=><option key={a.id} value={a.code}>{a.name} — {a.code}</option>)}
+                  </select>
+                  {form.affiliateCode&&<span style={{fontSize:11,color:"var(--gold)",marginTop:4,display:"block"}}>🎁 سيحصل العميل على أسبوع مجاني إضافي</span>}
+                </div>
+                <div className="fg">
+                  <label className="fl">ملاحظة</label>
+                  <input className="fi" placeholder="اسم العميل مثلاً" value={form.notes}
                     onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/>
                 </div>
               </div>
               <div className="dfoot">
-                <button className="bs" onClick={()=>setModal(false)}>إلغاء</button>
+                <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
                 <button className="bsv" onClick={createSub} disabled={saving}>{saving?<span className="spin"/>:"💾 حفظ"}</button>
               </div>
             </div>
           </div>
         )}
+
+        {modal==="aff"&&(
+          <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div className="drawer">
+              <div className="dhead"><span className="dt">🤝 مسوّق جديد</span><button className="dc" onClick={()=>setModal(null)}>✕</button></div>
+              <div className="dbody">
+                <div className="fg">
+                  <label className="fl">اسم المسوّق *</label>
+                  <input className="fi" placeholder="مثال: محمد الغانم" value={affForm.name}
+                    onChange={e=>setAffForm(f=>({...f,name:e.target.value}))}/>
+                </div>
+                <div className="fg">
+                  <label className="fl">اسم الحساب (يوتيوب / انستغرام)</label>
+                  <input className="fi" placeholder="mohamad_yt" value={affForm.handle}
+                    onChange={e=>setAffForm(f=>({...f,handle:e.target.value}))} autoCapitalize="none"/>
+                </div>
+                <div className="fg">
+                  <label className="fl">نسبة العمولة %</label>
+                  <div style={{display:"flex",gap:8,marginBottom:8}}>
+                    {[10,15,20,25].map(p=>(
+                      <button key={p} type="button" className={`plan-btn${affForm.commissionPct===p?" on":""}`}
+                        onClick={()=>setAffForm(f=>({...f,commissionPct:p}))}>{p}%</button>
+                    ))}
+                  </div>
+                  <input className="fi" type="number" placeholder="أو أدخل نسبة مخصصة"
+                    value={affForm.commissionPct} onChange={e=>setAffForm(f=>({...f,commissionPct:parseInt(e.target.value)||10}))} inputMode="numeric"/>
+                </div>
+                <div className="fg">
+                  <label className="fl">ملاحظات</label>
+                  <input className="fi" placeholder="ملاحظات إضافية" value={affForm.notes}
+                    onChange={e=>setAffForm(f=>({...f,notes:e.target.value}))}/>
+                </div>
+              </div>
+              <div className="dfoot">
+                <button className="bs" onClick={()=>setModal(null)}>إلغاء</button>
+                <button className="bsv" onClick={createAffiliate} disabled={saving}>{saving?<span className="spin"/>:"💾 حفظ"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {notif&&<Notif n={notif} onClose={()=>setNotif(null)}/>}
       </div>
     </div>
   );
 }
+
 
 // ─── CLIENT FORM ──────────────────────────────────────────────
 const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
@@ -960,7 +1079,6 @@ export default function App() {
   const [subDays,setSubDays]     = useState(null);
   const [maxClients,setMaxClients] = useState(null);
   const [clients,setClients]     = useState([]);
-  const [logs,setLogs]           = useState([]);
   const [page,setPage]           = useState("clients");
   const [modal,setModal]         = useState(null);
   const [sel,setSel]             = useState(null);
@@ -1056,9 +1174,7 @@ export default function App() {
     if(!user||subStatus==="none"){setClients([]);setLogs([]);setSynced(false);return;}
     const qc=query(collection(db,"clients"),where("uid","==",user.uid),orderBy("createdAt","desc"));
     const u1=onSnapshot(qc,snap=>{setClients(snap.docs.map(d=>({id:d.id,...d.data()})));setSynced(true);});
-    const ql=query(collection(db,"logs"),where("uid","==",user.uid),orderBy("time","desc"));
-    const u2=onSnapshot(ql,snap=>setLogs(snap.docs.map(d=>({id:d.id,...d.data()}))));
-    return()=>{u1();u2();};
+    return()=>{u1();};
   },[user,subStatus]);
 
   const addLog=useCallback((action,name)=>
@@ -1154,7 +1270,6 @@ export default function App() {
   const nav=[
     {k:"dashboard",i:"📊",l:"الإحصائيات"},
     {k:"clients",  i:"👥",l:"العملاء"},
-    {k:"logs",     i:"📜",l:"سجل النشاط"},
   ];
 
   return(
@@ -1233,16 +1348,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <h3 style={{color:"var(--gold)",marginBottom:12,fontSize:13}}>آخر النشاطات</h3>
-            <div className="logs">
-              {logs.slice(0,7).map(l=>(
-                <div key={l.id} className="log">
-                  <div className="ld"/><div className="lt"><strong>{l.action}</strong> — {l.client}</div>
-                  <div className="ldt">{fmt(l.time)}</div>
-                </div>
-              ))}
-              {!logs.length&&<div className="emp"><div className="ei">📜</div><div className="et2">لا يوجد نشاط بعد</div></div>}
-            </div>
           </>
         )}
 
@@ -1308,20 +1413,6 @@ export default function App() {
         )}
 
         {/* LOGS */}
-        {page==="logs"&&(
-          <>
-            <div className="ph"><h1 className="pt">سجل <span>النشاط</span></h1></div>
-            <div className="logs">
-              {logs.map(l=>(
-                <div key={l.id} className="log">
-                  <div className="ld"/><div className="lt"><strong>{l.action}</strong> — {l.client} <span style={{color:"var(--gray)",fontSize:10}}>({l.by})</span></div>
-                  <div className="ldt">{fmt(l.time)}</div>
-                </div>
-              ))}
-              {!logs.length&&<div className="emp"><div className="ei">📜</div><div className="et2">لا يوجد سجل</div></div>}
-            </div>
-          </>
-        )}
       </main>
 
       {modal==="add"&&canWrite&&!atLimit&&(
