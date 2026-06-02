@@ -349,50 +349,45 @@ function generatePDF(clients, single = null) {
   const rows = list.map((c,i) => {
     const bank = c.bankType==="أخرى" ? (c.bankTypeOther||"أخرى") : c.bankType;
     const status = c.isSold ? "مباع" : c.cardBooked ? "تم الحجز" : "لم يتم";
-    const statusColor = c.isSold ? "#e74c3c" : c.cardBooked ? "#27ae60" : "#f39c12";
-    return `
-      <tr style="background:${i%2===0?"#fff":"#f8f9ff"}">
-        <td style="text-align:center;color:#888;font-size:11px">${i+1}</td>
-        <td style="font-weight:700;color:#0a1628">${c.name||"—"}</td>
-        <td>${bank||"—"}</td>
-        <td style="direction:ltr;font-family:monospace;font-size:11px">${c.phone1||"—"}</td>
-        <td style="direction:ltr;font-family:monospace;font-size:10px">${c.nationalId||"—"}</td>
-        <td style="font-weight:700;color:#c9a84c">${c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
-        <td>${c.paymentType||"—"}</td>
-        <td><span style="background:${statusColor}18;color:${statusColor};border:1px solid ${statusColor}40;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">${status}</span></td>
-        <td style="direction:ltr;font-family:monospace;font-weight:700">${c.pinCode||"—"}</td>
-        <td style="direction:ltr;font-family:monospace;font-size:10px">${c.iban||"—"}</td>
-        <td style="font-size:11px;color:#555">${c.soldTo||"—"}</td>
-        <td style="font-size:11px;color:#555">${c.purchasedBy||"—"}</td>
-        <td style="font-size:11px;color:#555;max-width:120px">${c.notes||"—"}</td>
-      </tr>`;
+    const sc = c.isSold ? "#c0392b" : c.cardBooked ? "#166534" : "#92400e";
+    const sb = c.isSold ? "#fef2f2" : c.cardBooked ? "#f0fdf4" : "#fffbeb";
+    return `<tr>
+      <td style="text-align:center;color:#9ca3af;font-size:10px">${i+1}</td>
+      <td style="font-weight:700;color:#111827">${c.name||"—"}</td>
+      <td>${bank||"—"}</td>
+      <td style="font-family:monospace;direction:ltr">${c.phone1||"—"}</td>
+      <td style="font-family:monospace;direction:ltr;font-size:10px">${c.nationalId||"—"}</td>
+      <td style="font-weight:700;color:#92400e">${c.amount?parseFloat(c.amount).toLocaleString()+" "+c.currency:"—"}</td>
+      <td>${c.paymentType||"—"}</td>
+      <td><span style="background:${sb};color:${sc};border:1px solid ${sc}33;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;white-space:nowrap">${status}</span></td>
+      <td style="font-family:monospace;direction:ltr;font-weight:700;color:#1e40af">${c.pinCode||"—"}</td>
+      <td style="font-size:10px;color:#374151">${c.soldTo||"—"}</td>
+      <td style="font-size:10px;color:#374151">${c.purchasedBy||"—"}</td>
+    </tr>`;
   }).join("");
 
   const detailSection = single ? `
-    <div class="detail-box">
-      <div class="detail-header">📋 البيانات التفصيلية</div>
-      <div class="detail-grid">
+    <div style="margin-top:20px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+      <div style="background:#1e3a5f;color:#f0c040;padding:10px 16px;font-size:13px;font-weight:700">📋 البيانات التفصيلية</div>
+      <table style="width:100%;border-collapse:collapse">
         ${[
-          ["الاسم الكامل", single.name],
-          ["المصرف", single.bankType==="أخرى"?(single.bankTypeOther||"أخرى"):single.bankType],
-          ["الهاتف 1", single.phone1],
-          ["الهاتف 2", single.phone2||"—"],
-          ["الرقم الوطني", single.nationalId],
-          ["رقم الحساب", single.accountNumber||"—"],
-          ["رقم IBAN", single.iban||"—"],
-          ["المبلغ المدفوع", single.amount?`${parseFloat(single.amount).toLocaleString()} ${single.currency}`:"—"],
-          ["تم الشراء من طرف", single.purchasedBy||"—"],
-          ["نوع الحجز", single.paymentType||"—"],
-          ["حالة البطاقة", single.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
-          ["تاريخ الحجز", single.bookingDate||"—"],
-          ["الرقم السري", single.pinCode||"—"],
-          ["حالة البيع", single.isSold?"🔴 تم البيع":"🟢 لم يُباع"],
-          ["بيعت إلى", single.soldTo||"—"],
-          ["ملاحظات", single.notes||"—"],
-          ["تاريخ الإضافة", fmt(single.createdAt)],
-          ["أضيف بواسطة", single.createdBy||"—"],
-        ].map(([l,v])=>`<div class="detail-item"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join("")}
-      </div>
+          ["الاسم الكامل",single.name],
+          ["المصرف",single.bankType==="أخرى"?(single.bankTypeOther||"أخرى"):single.bankType],
+          ["الهاتف 1",single.phone1],["الهاتف 2",single.phone2||"—"],
+          ["الرقم الوطني",single.nationalId],["رقم الحساب",single.accountNumber||"—"],
+          ["رقم IBAN",single.iban||"—"],
+          ["المبلغ المدفوع",single.amount?parseFloat(single.amount).toLocaleString()+" "+single.currency:"—"],
+          ["تم الشراء من طرف",single.purchasedBy||"—"],["نوع الحجز",single.paymentType||"—"],
+          ["حالة البطاقة",single.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
+          ["تاريخ الحجز",single.bookingDate||"—"],["الرقم السري",single.pinCode||"—"],
+          ["حالة البيع",single.isSold?"🔴 تم البيع":"🟢 لم يُباع"],
+          ["بيعت إلى",single.soldTo||"—"],["ملاحظات",single.notes||"—"],
+          ["تاريخ الإضافة",fmt(single.createdAt)],["أضيف بواسطة",single.createdBy||"—"],
+        ].map(([l,v],i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"}">
+          <td style="padding:8px 14px;font-size:12px;color:#6b7280;font-weight:600;width:160px;border-bottom:1px solid #f3f4f6">${l}</td>
+          <td style="padding:8px 14px;font-size:12px;color:#111827;border-bottom:1px solid #f3f4f6">${v}</td>
+        </tr>`).join("")}
+      </table>
     </div>` : "";
 
   const html = `<!DOCTYPE html>
@@ -404,83 +399,68 @@ function generatePDF(clients, single = null) {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#f0f4f8;color:#1a1a2e;font-size:13px}
-  .page{background:#fff;max-width:1200px;margin:0 auto;padding:24px}
-  .back-btn{display:inline-flex;align-items:center;gap:6px;background:#0a1628;color:#e8c96a;
-    border:none;border-radius:8px;padding:8px 16px;font-family:'Tajawal',sans-serif;
-    font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;text-decoration:none}
-  .back-btn:hover{background:#162d52}
-  .header{display:flex;align-items:center;justify-content:space-between;
-    background:linear-gradient(135deg,#0a1628,#162d52);border-radius:14px;
-    padding:18px 22px;margin-bottom:18px;color:#fff}
-  .header-left h1{font-size:18px;font-weight:900;color:#e8c96a;margin-bottom:3px}
-  .header-left p{font-size:11px;color:#8a9ab5}
-  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:18px}
-  .stat{background:#f8f9ff;border:1px solid #dde4f0;border-radius:10px;padding:11px;
-    text-align:center;border-top:3px solid #c9a84c}
-  .stat .num{font-size:19px;font-weight:900;color:#c9a84c}
-  .stat .lbl{font-size:10px;color:#6b7a99;margin-top:2px}
-  .table-wrap{border-radius:12px;overflow:hidden;border:1px solid #dde4f0;
-    margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  table{width:100%;border-collapse:collapse;table-layout:fixed}
-  thead tr{background:linear-gradient(135deg,#0a1628,#162d52)}
-  th{padding:10px 8px;text-align:right;font-size:10px;font-weight:700;color:#e8c96a;white-space:nowrap;overflow:hidden}
-  td{padding:8px;border-bottom:1px solid #eef2f9;font-size:11px;color:#2d3748;
-    vertical-align:middle;word-break:break-word}
-  .detail-box{border:1px solid #dde4f0;border-radius:12px;overflow:hidden;margin-bottom:18px}
-  .detail-header{background:linear-gradient(135deg,#0a1628,#162d52);color:#e8c96a;padding:11px 16px;font-size:13px;font-weight:700}
-  .detail-grid{display:grid;grid-template-columns:1fr 1fr}
-  .detail-item{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid #eef2f9}
-  .detail-item:nth-child(even){background:#f9faff}
-  .detail-label{color:#6b7a99;font-size:11px;font-weight:600;min-width:120px;flex-shrink:0}
-  .detail-val{color:#1a1a2e;font-size:12px;font-weight:500;word-break:break-all}
-  .footer{display:flex;justify-content:space-between;border-top:2px solid #e8c96a;
-    padding-top:10px;font-size:10px;color:#9aa3b0}
+  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#fff;color:#111827;font-size:12px}
+  .wrap{padding:20px;max-width:1100px;margin:0 auto}
+  .no-print{margin-bottom:14px;display:flex;gap:8px}
+  .btn{border:none;border-radius:8px;padding:9px 18px;font-family:'Tajawal',sans-serif;
+    font-size:13px;font-weight:700;cursor:pointer}
+  .hdr{background:linear-gradient(135deg,#1e3a5f,#0f2040);border-radius:10px;
+    padding:16px 22px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+  .hdr h1{font-size:17px;font-weight:900;color:#f0c040;margin-bottom:3px}
+  .hdr p{font-size:11px;color:#93a3b8}
+  .tw{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:18px;
+    box-shadow:0 1px 6px rgba(0,0,0,.06)}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:linear-gradient(135deg,#1e3a5f,#0f2040)}
+  th{padding:10px 9px;text-align:right;font-size:11px;font-weight:700;color:#f0c040;white-space:nowrap}
+  td{padding:9px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#374151;vertical-align:middle}
+  tr:nth-child(even) td{background:#fafafa}
+  tr:last-child td{border-bottom:none}
+  .ft{display:flex;justify-content:space-between;border-top:2px solid #f0c040;
+    padding-top:10px;font-size:10px;color:#9ca3af;margin-top:4px}
   @media print{
-    .back-btn{display:none}
-    body{background:#fff}
-    .page{padding:12px;max-width:100%}
-    thead{display:table-header-group}
+    @page{size:A4 landscape;margin:10mm}
+    .no-print{display:none!important}
+    body{font-size:10px}
+    .wrap{padding:0;max-width:100%}
+    .hdr{padding:10px 14px;border-radius:6px}
+    .hdr h1{font-size:14px}
+    th{padding:7px 6px;font-size:9px}
+    td{padding:6px;font-size:10px}
     tr{page-break-inside:avoid}
+    thead{display:table-header-group}
   }
 </style>
 </head>
 <body>
-<div class="page">
-  <button class="back-btn" onclick="window.close()">← رجوع للتطبيق</button>
+<div class="wrap">
+  <div class="no-print">
+    <button class="btn" style="background:#1e3a5f;color:#f0c040" onclick="window.close()">← رجوع</button>
+    <button class="btn" style="background:#166534;color:#fff" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+  </div>
 
-  <div class="header">
-    <div class="header-left">
+  <div class="hdr">
+    <div>
       <h1>💳 ${title}</h1>
       <p>تاريخ التقرير: ${date} &nbsp;·&nbsp; إجمالي: ${list.length} عميل</p>
     </div>
+    <div style="font-size:30px;opacity:.5">💳</div>
   </div>
 
-  ${!single ? `
-  <div class="stats">
-    <div class="stat"><div class="num">${list.length}</div><div class="lbl">إجمالي العملاء</div></div>
-    <div class="stat"><div class="num" style="color:#27ae60">${list.filter(c=>c.cardBooked&&!c.isSold).length}</div><div class="lbl">تم الحجز</div></div>
-    <div class="stat"><div class="num" style="color:#f39c12">${list.filter(c=>!c.cardBooked&&!c.isSold).length}</div><div class="lbl">لم يتم الحجز</div></div>
-    <div class="stat"><div class="num" style="color:#e74c3c">${list.filter(c=>c.isSold).length}</div><div class="lbl">تم البيع</div></div>
-    <div class="stat"><div class="num">${list.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0).toLocaleString("ar-LY")}</div><div class="lbl">إجمالي المبالغ د.ل</div></div>
-  </div>` : ""}
-
-  <div class="table-wrap">
+  <div class="tw">
     <table>
       <thead><tr>
-        <th style="width:30px">#</th>
-        <th style="width:12%">الاسم</th>
-        <th style="width:9%">المصرف</th>
-        <th style="width:10%">الهاتف</th>
-        <th style="width:11%">الرقم الوطني</th>
-        <th style="width:8%">المبلغ</th>
-        <th style="width:7%">نوع الحجز</th>
-        <th style="width:8%">الحالة</th>
-        <th style="width:7%">الرقم السري</th>
-        <th style="width:13%">IBAN</th>
-        <th style="width:8%">بيعت إلى</th>
-        <th style="width:8%">اشترى من طرف</th>
-        <th style="width:9%">ملاحظات</th>
+        <th style="width:28px">#</th>
+        <th>الاسم</th>
+        <th>المصرف</th>
+        <th>الهاتف</th>
+        <th>الرقم الوطني</th>
+        <th>المبلغ</th>
+        <th>نوع الحجز</th>
+        <th>الحالة</th>
+        <th>الرقم السري</th>
+        <th>بيعت إلى</th>
+        <th>اشترى من طرف</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -488,7 +468,7 @@ function generatePDF(clients, single = null) {
 
   ${detailSection}
 
-  <div class="footer">
+  <div class="ft">
     <span>تطبيق إدارة بطاقاتك</span>
     <span>${date}</span>
   </div>
@@ -504,58 +484,52 @@ function generatePDF(clients, single = null) {
 // ─── BACKUP ───────────────────────────────────────────────────
 function downloadBackup(clients, email) {
   const data = {
-    exportDate: new Date().toISOString(),
-    exportedBy: email,
+    exportDate: new Date().toISOString(), exportedBy: email,
     totalClients: clients.length,
-    clients: clients.map(c => ({...c, createdAt: fmt(c.createdAt), updatedAt: fmt(c.updatedAt)}))
+    clients: clients.map(c=>({...c,createdAt:fmt(c.createdAt),updatedAt:fmt(c.updatedAt)}))
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `backup_${email}_${Date.now()}.json`;
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`backup_${email}_${Date.now()}.json`;
   a.click();
 }
 
 function exportCSV(clients) {
-  // RTL headers — reversed order so rightmost column appears first visually
-  const H=["الاسم","المصرف","الهاتف 1","الهاتف 2","الرقم الوطني","رقم الحساب","IBAN","المبلغ","العملة","تم الشراء من طرف","نوع الحجز","حالة البطاقة","تاريخ الحجز","الرقم السري","بيعت إلى","تم البيع","ملاحظات"];
-  const R=clients.map(c=>[
-    c.name||"",
-    c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType||"",
-    c.phone1||"",
-    c.phone2||"",
-    c.nationalId||"",
-    c.accountNumber||"",
-    c.iban||"",
-    c.amount||"",
-    c.currency||"د.ل",
-    c.purchasedBy||"",
-    c.paymentType||"",
-    c.cardBooked?"تم الحجز":"لم يتم",
-    c.bookingDate||"",
-    c.pinCode||"",
-    c.soldTo||"",
-    c.isSold?"نعم":"لا",
-    c.notes||""
-  ]);
-  // BOM + CSV with proper encoding for Arabic on all devices
-  const csv=[H,...R].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
-  // iOS/Android compatible download
+  // Columns ordered right-to-left for Arabic apps
+  const cols = [
+    ["الاسم",            c=>c.name||""],
+    ["المصرف",           c=>c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType||""],
+    ["الهاتف 1",         c=>c.phone1||""],
+    ["الهاتف 2",         c=>c.phone2||""],
+    ["الرقم الوطني",     c=>c.nationalId||""],
+    ["رقم الحساب",       c=>c.accountNumber||""],
+    ["IBAN",             c=>c.iban||""],
+    ["المبلغ",           c=>c.amount||""],
+    ["العملة",           c=>c.currency||"د.ل"],
+    ["نوع الحجز",        c=>c.paymentType||""],
+    ["حالة البطاقة",     c=>c.cardBooked?"تم الحجز":"لم يتم"],
+    ["تاريخ الحجز",      c=>c.bookingDate||""],
+    ["الرقم السري",      c=>c.pinCode||""],
+    ["تم البيع",         c=>c.isSold?"نعم":"لا"],
+    ["بيعت إلى",         c=>c.soldTo||""],
+    ["اشترى من طرف",     c=>c.purchasedBy||""],
+    ["ملاحظات",          c=>c.notes||""],
+  ];
+  const H = cols.map(([h])=>h);
+  const R = clients.map(c=>cols.map(([,fn])=>fn(c)));
+  const esc = v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv = [H,...R].map(r=>r.map(esc).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   if(navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)){
-    const file = new File([blob], `clients_${Date.now()}.csv`, {type:"text/csv;charset=utf-8;"});
-    navigator.share({files:[file], title:"قائمة العملاء"}).catch(()=>{
-      // fallback
-      const a=document.createElement("a");
-      a.href=URL.createObjectURL(blob);
-      a.download=`clients_${Date.now()}.csv`;
-      a.click();
+    const file=new File([blob],`clients_${Date.now()}.csv`,{type:"text/csv;charset=utf-8;"});
+    navigator.share({files:[file],title:"قائمة العملاء"}).catch(()=>{
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+      a.download=`clients_${Date.now()}.csv`;a.click();
     });
   } else {
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download=`clients_${Date.now()}.csv`;
-    a.click();
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download=`clients_${Date.now()}.csv`;a.click();
   }
 }
 
