@@ -1365,11 +1365,11 @@ export default function App() {
       ||(filterStatus==="sold"&&c.isSold);
     return m&&fb&&fs;
   }).sort((a,b)=>{
-    if(sortBy==="newest") return 0; // already ordered by createdAt desc from Firestore
-    if(sortBy==="oldest"){
-      const ta=a.createdAt?.toDate?a.createdAt.toDate():new Date(a.createdAt||0);
-      const tb=b.createdAt?.toDate?b.createdAt.toDate():new Date(b.createdAt||0);
-      return ta-tb;
+    if(sortBy==="newest") return 0;
+    if(sortBy==="booking_asc"||sortBy==="booking_desc"){
+      const da = a.bookingDate ? new Date(a.bookingDate) : new Date(0);
+      const db = b.bookingDate ? new Date(b.bookingDate) : new Date(0);
+      return sortBy==="booking_asc" ? da-db : db-da;
     }
     if(sortBy==="alpha") return (a.name||"").localeCompare(b.name||"","ar");
     return 0;
@@ -1509,8 +1509,9 @@ export default function App() {
                   value={search} onChange={e=>setSearch(e.target.value)}/>
               </div>
               <select className="fs" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
-                <option value="newest">🕐 الأحدث</option>
-                <option value="oldest">🕰 الأقدم</option>
+                <option value="newest">📅 الأحدث إضافةً</option>
+                <option value="booking_asc">📅 تاريخ الحجز: الأقدم أولاً</option>
+                <option value="booking_desc">📅 تاريخ الحجز: الأحدث أولاً</option>
                 <option value="alpha">🔤 أبجدي</option>
               </select>
               <select className="fs" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
