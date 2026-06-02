@@ -12,6 +12,55 @@ import { auth, db } from "./firebase";
 
 const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
 
+const Logo = ({size=40}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width={size} height={size}>
+    <defs>
+      <linearGradient id="lbg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#0a1628"/>
+        <stop offset="100%" stopColor="#162d52"/>
+      </linearGradient>
+      <linearGradient id="lc1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#1a3a6b"/>
+        <stop offset="100%" stopColor="#0f2040"/>
+      </linearGradient>
+      <linearGradient id="lc2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#c9a84c"/>
+        <stop offset="100%" stopColor="#e8c96a"/>
+      </linearGradient>
+      <linearGradient id="lgold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#c9a84c"/>
+        <stop offset="100%" stopColor="#f0d980"/>
+      </linearGradient>
+      <filter id="lsh"><feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="rgba(0,0,0,0.5)"/></filter>
+    </defs>
+    <circle cx="100" cy="100" r="96" fill="url(#lbg)" filter="url(#lsh)"/>
+    <circle cx="100" cy="100" r="96" fill="none" stroke="#c9a84c" strokeWidth="1.5" opacity="0.4"/>
+    {/* Card 1 - back blue */}
+    <g transform="translate(100,105) rotate(-8) translate(-65,-41)">
+      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc1)" filter="url(#lsh)"/>
+      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
+      <rect x="14" y="22" width="22" height="17" rx="3" fill="#c9a84c" opacity="0.7"/>
+      <circle cx="88" cy="58" r="9" fill="#c9a84c" opacity="0.5"/>
+      <circle cx="104" cy="58" r="9" fill="#e8c96a" opacity="0.7"/>
+    </g>
+    {/* Card 2 - front gold */}
+    <g transform="translate(100,100) rotate(5) translate(-65,-41)">
+      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc2)" filter="url(#lsh)"/>
+      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+      <rect x="14" y="20" width="22" height="17" rx="3" fill="#0a1628" opacity="0.6"/>
+      <circle cx="20" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+      <circle cx="27" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+      <circle cx="34" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+      <circle cx="41" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+      <circle cx="54" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+      <circle cx="61" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
+    </g>
+    {/* Letter G */}
+    <text x="100" y="115" fontFamily="Georgia,serif" fontSize="62" fontWeight="bold"
+      textAnchor="middle" fill="url(#lgold)" opacity="0.95">G</text>
+  </svg>
+);
+
 const BANKS = [
   "التجاري الوطني","الجمهورية","الأمان","الوحدة",
   "شمال أفريقيا","التجارة والتنمية","المتوسط","الاتحاد","أخرى"
@@ -56,8 +105,7 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .ac{background:rgba(15,32,64,.97);border:1px solid var(--border);border-radius:20px;
   padding:36px 28px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .al2{text-align:center;margin-bottom:24px}
-.li{width:60px;height:60px;background:linear-gradient(135deg,var(--gold),var(--gold2));
-  border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px}
+.li{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px;overflow:hidden}
 .al2 h1{font-size:17px;font-weight:900;color:#f8f6f0}
 .al2 p{font-size:11px;color:#8a9ab5;margin-top:2px}
 .tabs{display:flex;background:rgba(0,0,0,.25);border-radius:10px;padding:3px;margin-bottom:20px}
@@ -145,8 +193,7 @@ textarea.fi{resize:none}
   z-index:100;transition:transform .25s ease}
 .light .sidebar{background:rgba(225,232,248,.99)}
 .sl{display:flex;align-items:center;gap:9px;padding:0 5px 18px;border-bottom:1px solid var(--border);margin-bottom:18px}
-.sl-i{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));
-  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sl-i{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden}
 .sl-t h2{font-size:13px;font-weight:900;color:var(--white)}
 .sl-t p{font-size:10px;color:var(--gray)}
 .ni{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:9px;cursor:pointer;
@@ -451,7 +498,7 @@ function ActivationScreen({user, onActivated}) {
   return(
     <div className="aw"><style>{CSS}</style>
       <div className="ac">
-        <div className="al2"><div className="li">🔑</div><h1>تفعيل الاشتراك</h1><p>مرحباً {user.email}</p></div>
+        <div className="al2"><div className="li"><Logo size={34}/></div><h1>تفعيل الاشتراك</h1><p>مرحباً {user.email}</p></div>
         <div className="act-box">
           <h3>أدخل كود التفعيل</h3>
           <p>احصل على الكود من المسؤول وأدخله أدناه لتفعيل اشتراكك.</p>
@@ -858,7 +905,7 @@ function AuthScreen({onLogin}) {
   return(
     <div className="aw"><style>{CSS}</style>
       <div className="ac">
-        <div className="al2"><div className="li">🏦</div><h1>نظام إدارة العملاء المصرفيين</h1><p>منصة آمنة ومتزامنة عبر جميع الأجهزة</p></div>
+        <div className="al2"><div className="li"><Logo size={34}/></div><h1>إدارة بطاقاتك</h1><p>منصة آمنة ومتزامنة عبر جميع الأجهزة</p></div>
         {!reset?(
           <>
             <div className="tabs">
@@ -1116,7 +1163,7 @@ export default function App() {
 
       <div className="mh">
         <button className="mb" onClick={()=>setBar(o=>!o)}>☰</button>
-        <span style={{color:"var(--gold)",fontWeight:700,fontSize:14}}>🏦 إدارة العملاء</span>
+        <span style={{color:"var(--gold)",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6}}><Logo size={22}/>إدارة بطاقاتك</span>
         {canWrite&&!atLimit
           ?<button className="mb" onClick={()=>{setSel(null);setModal("add");setBar(false);}}>＋</button>
           :<span className="readonly-badge">{atLimit?"🚫 حد أقصى":"👁 قراءة"}</span>
@@ -1126,8 +1173,8 @@ export default function App() {
 
       <div className={`sidebar${bar?" open":""}`}>
         <div className="sl">
-          <div className="sl-i">🏦</div>
-          <div className="sl-t"><h2>بنك البيانات</h2><p>إدارة العملاء</p></div>
+          <div className="sl-i"><Logo size={26}/></div>
+          <div className="sl-t"><h2>إدارة بطاقاتك</h2><p>منصة آمنة ومتزامنة</p></div>
         </div>
         <nav>{nav.map(n=>(
           <button key={n.k} className={`ni${page===n.k?" on":""}`} onClick={()=>{setPage(n.k);setBar(false);}}>
