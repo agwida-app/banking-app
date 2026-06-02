@@ -67,6 +67,7 @@ const BANKS = [
 ];
 
 const PLANS = [
+  { id:"1m",  label:"شهر",     months:1  },
   { id:"3m",  label:"3 أشهر",  months:3  },
   { id:"6m",  label:"6 أشهر",  months:6  },
   { id:"12m", label:"12 شهر",  months:12 },
@@ -473,15 +474,18 @@ function Notif({n,onClose}) {
 
 // ─── ACTIVATION ───────────────────────────────────────────────
 function ActivationScreen({user, onActivated}) {
-  const [code,setCode]=useState("");
-  const [err,setErr]=useState("");
-  const [load,setLoad]=useState(false);
+  const [code,setCode]         = useState("");
+  const [refCode,setRefCode]   = useState("");
+  const [err,setErr]           = useState("");
+  const [ok,setOk]             = useState("");
+  const [load,setLoad]         = useState(false);
 
   const activate=async()=>{
-    setErr("");setLoad(true);
+    setErr("");setOk("");setLoad(true);
     const trimmed=code.trim().toUpperCase();
     if(!trimmed){setErr("أدخل كود التفعيل");setLoad(false);return;}
     try{
+      // Validate subscription code
       const ref=doc(db,"subscriptions",trimmed);
       const snap=await getDoc(ref);
       if(!snap.exists()){setErr("الكود غير صحيح أو غير موجود");setLoad(false);return;}
@@ -489,8 +493,50 @@ function ActivationScreen({user, onActivated}) {
       if(data.usedBy&&data.usedBy!==user.uid){setErr("هذا الكود مستخدم مسبقاً");setLoad(false);return;}
       const exp=data.expiresAt?.toDate?data.expiresAt.toDate():new Date(data.expiresAt);
       if(exp<new Date()){setErr("هذا الكود منتهي الصلاحية");setLoad(false);return;}
-      await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email});
-      onActivated();
+
+      // Validate referral code (optional)
+      const refTrimmed=refCode.trim().toUpperCase();
+      let bonusDays=0;
+      if(refTrimmed){
+        const affRef=doc(db,"affiliates",refTrimmed);
+        const affSnap=await getDoc(affRef);
+        if(!affSnap.exists()){setErr("كود الإحالة غير صحيح");setLoad(false);return;}
+        const affData=affSnap.data();
+        // Check if user already used a referral code
+        const usersRef=doc(db,"users",user.uid);
+        const userSnap=await getDoc(usersRef);
+        if(userSnap.exists()&&userSnap.data().usedReferral){
+          setErr("لقد استخدمت كود إحالة مسبقاً");setLoad(false);return;
+        }
+        bonusDays=7;
+        // Update affiliate stats
+        await updateDoc(affRef,{
+          totalReferrals:(affData.totalReferrals||0)+1,
+          pendingReferrals:(affData.pendingReferrals||0)+1
+        });
+        // Save user's referral usage
+        await setDoc(doc(db,"users",user.uid),{
+          uid:user.uid,email:user.email,
+          usedReferral:true,referralCode:refTrimmed,
+          referralUsedAt:serverTimestamp()
+        },{merge:true});
+      }
+
+      // Add bonus days to subscription expiry
+      if(bonusDays>0){
+        const newExp=new Date(exp);
+        newExp.setDate(newExp.getDate()+bonusDays);
+        await updateDoc(ref,{
+          usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,
+          expiresAt:newExp,
+          planLabel:(data.planLabel||"")+" + أسبوع مجاني 🎁"
+        });
+        setOk("تم التفعيل! حصلت على 7 أيام مجانية إضافية 🎁");
+      } else {
+        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email});
+      }
+
+      setTimeout(()=>onActivated(), 1500);
     }catch(e){setErr("حدث خطأ: "+e.message);}
     setLoad(false);
   };
@@ -503,9 +549,17 @@ function ActivationScreen({user, onActivated}) {
           <h3>أدخل كود التفعيل</h3>
           <p>احصل على الكود من المسؤول وأدخله أدناه لتفعيل اشتراكك.</p>
           {err&&<div className="me">{err}</div>}
+          {ok&&<div className="ms">{ok}</div>}
+          <label className="fl" style={{marginBottom:6}}>كود التفعيل *</label>
           <input className="code-input" placeholder="XXXXXXXX" value={code}
             onChange={e=>setCode(e.target.value.toUpperCase())}
             onKeyDown={e=>e.key==="Enter"&&activate()} autoCapitalize="characters" autoCorrect="off"/>
+          <div style={{marginTop:14}}>
+            <label className="fl">كود الإحالة <span style={{color:"var(--gray)",fontWeight:400}}>(اختياري — للحصول على أسبوع مجاني 🎁)</span></label>
+            <input className="fi ltr" placeholder="مثال: MOHAMAD47" value={refCode}
+              onChange={e=>setRefCode(e.target.value.toUpperCase())}
+              style={{letterSpacing:2,textAlign:"center",fontSize:15}} autoCapitalize="characters" autoCorrect="off"/>
+          </div>
           <button className="bp" style={{marginTop:14}} onClick={activate} disabled={load}>
             {load?<span className="spin spin2"/>:"🔓 تفعيل الاشتراك"}
           </button>
@@ -612,7 +666,7 @@ function AdminPanel({user, onBack}) {
   };
 
   const renewSub=async(sub)=>{
-    const planId=prompt("أدخل الباقة (3m / 6m / 12m):",sub.plan||"3m");
+    const planId=prompt("أدخل الباقة (1m / 3m / 6m / 12m):",sub.plan||"3m");
     if(!planId)return;
     const plan=PLANS.find(p=>p.id===planId);
     if(!plan){alert("باقة غير صحيحة");return;}
