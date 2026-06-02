@@ -1171,18 +1171,11 @@ export default function App() {
   },[clients]);
 
   useEffect(()=>{
-    if(!user||subStatus==="none"){setClients([]);setLogs([]);setSynced(false);return;}
+    if(!user||subStatus==="none"){setClients([]);setSynced(false);return;}
     const qc=query(collection(db,"clients"),where("uid","==",user.uid),orderBy("createdAt","desc"));
     const u1=onSnapshot(qc,snap=>{setClients(snap.docs.map(d=>({id:d.id,...d.data()})));setSynced(true);});
     return()=>{u1();};
   },[user,subStatus]);
-
-  const addLog=useCallback((action,name)=>
-    addDoc(collection(db,"logs"),{uid:user.uid,action,client:name,by:user.email,time:serverTimestamp()})
-  ,[user]);
-
-  const canWrite=subStatus==="active";
-  const atLimit=maxClients&&clients.length>=maxClients;
 
   const handleAdd=useCallback(async(form)=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
@@ -1190,33 +1183,33 @@ export default function App() {
     setSaving(true);
     try{
       await addDoc(collection(db,"clients"),{...form,uid:user.uid,createdBy:user.email,createdAt:serverTimestamp(),updatedAt:null,updatedBy:null});
-      await addLog("إضافة عميل",form.name);
       setModal(null);notify("تم إضافة العميل ✅");
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
-  },[user,addLog,notify,canWrite,atLimit,maxClients]);
+  },[user,notify,canWrite,atLimit,maxClients]);
+
+  const canWrite=subStatus==="active";
+  const atLimit=maxClients&&clients.length>=maxClients;
 
   const handleEdit=useCallback(async(form)=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
     setSaving(true);
     try{
       await updateDoc(doc(db,"clients",sel.id),{...form,updatedBy:user.email,updatedAt:serverTimestamp()});
-      await addLog("تعديل عميل",form.name);
       setModal(null);notify("تم التعديل ✏️");
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
-  },[user,sel,addLog,notify,canWrite]);
+  },[user,sel,notify,canWrite]);
 
   const handleDelete=useCallback(async()=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
     setSaving(true);
     try{
       await deleteDoc(doc(db,"clients",sel.id));
-      await addLog("حذف عميل",sel.name);
       setModal(null);notify("تم الحذف 🗑","err");
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
-  },[user,sel,addLog,notify,canWrite]);
+  },[user,sel,notify,canWrite]);
 
   // Filters — search by name, phone, national ID, IBAN
   const filtered=clients.filter(c=>{
