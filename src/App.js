@@ -67,11 +67,12 @@ const BANKS = [
 ];
 
 const PLANS = [
-  { id:"1m",  label:"شهر",     months:1  },
-  { id:"3m",  label:"3 أشهر",  months:3  },
-  { id:"6m",  label:"6 أشهر",  months:6  },
-  { id:"12m", label:"12 شهر",  months:12 },
+  { id:"1m",  label:"شهر",     months:1,  price:10  },
+  { id:"3m",  label:"3 أشهر",  months:3,  price:30  },
+  { id:"6m",  label:"6 أشهر",  months:6,  price:60  },
+  { id:"12m", label:"12 شهر",  months:12, price:100 },
 ];
+const COMMISSION_PCT = 10; // نسبة العمولة الثابتة
 
 const EMPTY = {
   name:"",bankType:"",bankTypeOther:"",phone1:"",phone2:"",nationalId:"",
@@ -642,7 +643,7 @@ function AdminPanel({user, onBack}) {
   const [affiliates,setAff]  = useState([]);
   const [tab,setTab]         = useState("subs");
   const [modal,setModal]     = useState(null);
-  const [form,setForm]       = useState({code:"",plan:"3m",customDays:"",maxClients:100,notes:"",affiliateCode:""});
+  const [form,setForm]       = useState({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
   const [affForm,setAffForm] = useState({name:"",handle:"",code:"",commissionPct:10,notes:""});
   const [saving,setSaving]   = useState(false);
   const [notif,setNotif]     = useState(null);
@@ -683,7 +684,7 @@ function AdminPanel({user, onBack}) {
       const codeKey=form.code.trim().toUpperCase();
       await setDoc(doc(db,"subscriptions",codeKey),{
         code:codeKey,plan:form.plan||"custom",planLabel,
-        maxClients:parseInt(form.maxClients)||100,expiresAt:expDate,
+        maxClients:Math.max(500,parseInt(form.maxClients)||500),expiresAt:expDate,
         usedBy:null,usedAt:null,usedByEmail:null,
         affiliateCode:form.affiliateCode.trim().toUpperCase()||null,
         createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,devices:{}
@@ -697,7 +698,7 @@ function AdminPanel({user, onBack}) {
         });
       }
       notify("تم إنشاء الكود ✅");
-      setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:100,notes:"",affiliateCode:""});
+      setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
@@ -723,11 +724,48 @@ function AdminPanel({user, onBack}) {
     setSaving(false);
   };
 
-  const markPaid=async(aff)=>{
-    const pending=aff.pendingReferrals||0;
-    if(!pending){notify("لا توجد عمولات معلقة","err");return;}
-    await updateDoc(doc(db,"affiliates",aff.id),{pendingReferrals:0,paidReferrals:(aff.paidReferrals||0)+pending});
-    notify(`تم تسجيل دفع عمولة ${aff.name} ✅`);
+  const [payModal,setPayModal]   = useState(null);
+  const [payForm,setPayForm]     = useState({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
+  const [payments,setPayments]   = useState({});
+  const [selAff,setSelAff]       = useState(null);
+
+  useEffect(()=>{
+    if(!affiliates.length)return;
+    const unsubs=affiliates.map(a=>{
+      const q=query(collection(db,`affiliates/${a.id}/payments`),orderBy("createdAt","desc"));
+      return onSnapshot(q,snap=>{
+        setPayments(p=>({...p,[a.id]:snap.docs.map(d=>({id:d.id,...d.data()}))}));
+      });
+    });
+    return()=>unsubs.forEach(u=>u());
+  },[affiliates]);
+
+  const addPayment=async()=>{
+    if(!payForm.amount||isNaN(parseFloat(payForm.amount))){notify("أدخل المبلغ","err");return;}
+    setSaving(true);
+    try{
+      const aff=payModal;
+      const affPays=payments[aff.id]||[];
+      const newTotal=affPays.reduce((s,p)=>s+(p.amount||0),0)+parseFloat(payForm.amount);
+      await addDoc(collection(db,`affiliates/${aff.id}/payments`),{
+        amount:parseFloat(payForm.amount),
+        note:payForm.note||"",
+        date:payForm.date,
+        paidBy:user.email,
+        createdAt:serverTimestamp()
+      });
+      await updateDoc(doc(db,"affiliates",aff.id),{totalPaid:newTotal});
+      notify("تم تسجيل الدفعة ✅");
+      setPayModal(null);
+      setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
+    }catch(e){notify("خطأ: "+e.message,"err");}
+    setSaving(false);
+  };
+
+  const deletePayment=async(affId,payId)=>{
+    if(!window.confirm("حذف هذه الدفعة؟"))return;
+    await deleteDoc(doc(db,`affiliates/${affId}/payments`,payId));
+    notify("تم الحذف","err");
   };
 
   const deleteSub=async(id)=>{
@@ -790,9 +828,8 @@ function AdminPanel({user, onBack}) {
                       {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
                       <button className="ib" onClick={()=>{
                         const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
-                        navigator.clipboard.writeText(msg);
-                        notify("تم نسخ رسالة الترحيب ✅");
-                      }} title="نسخ رسالة الترحيب">✉️</button>
+                        navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
+                      }}>✉️</button>
                       <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
                       <button className="ib" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱</button>
                       <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
@@ -816,11 +853,13 @@ function AdminPanel({user, onBack}) {
             <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
               المسوّقون: <strong style={{color:"var(--white)"}}>{affiliates.length}</strong> •
               إجمالي الإحالات: <strong style={{color:"var(--ok)"}}>{affiliates.reduce((s,a)=>s+(a.totalReferrals||0),0)}</strong> •
-              عمولات معلقة: <strong style={{color:"var(--warn)"}}>{affiliates.reduce((s,a)=>s+(a.pendingReferrals||0),0)}</strong>
+              إجمالي المدفوع: <strong style={{color:"var(--gold)"}}>{affiliates.reduce((s,a)=>s+(a.totalPaid||0),0).toLocaleString()} د.ل</strong>
             </div>
             {affiliates.length===0&&<div className="emp"><div className="ei">🤝</div><div className="et2">لا يوجد مسوّقون بعد</div></div>}
             {affiliates.map(a=>{
               const refSubs=subs.filter(s=>s.affiliateCode===a.code);
+              const affPays=payments[a.id]||[];
+              const totalPaid=affPays.reduce((s,p)=>s+(p.amount||0),0);
               return(
                 <div key={a.id} className="sub-card">
                   <div className="sub-card-header">
@@ -828,26 +867,51 @@ function AdminPanel({user, onBack}) {
                       <span style={{fontWeight:900,color:"var(--white)",fontSize:15}}>{a.name}</span>
                       {a.handle&&<span style={{fontSize:12,color:"var(--gray)",marginRight:8}}>@{a.handle}</span>}
                     </div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                       <button className="ib" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
-                      {(a.pendingReferrals||0)>0&&<button className="ib" style={{color:"var(--ok)"}} onClick={()=>markPaid(a)}>💰 دفع</button>}
+                      <button className="ib" style={{color:"var(--ok)",borderColor:"rgba(46,204,113,.3)"}}
+                        onClick={()=>{setPayModal(a);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});}}>💰 دفعة</button>
+                      <button className="ib" onClick={()=>setSelAff(selAff?.id===a.id?null:a)}>📜 ({affPays.length})</button>
                       <button className="ib" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");}}>🗑</button>
                     </div>
                   </div>
                   <div className="sub-meta">
-                    💹 العمولة: <strong style={{color:"var(--gold)"}}>{a.commissionPct}%</strong> من كل اشتراك<br/>
-                    📊 إجمالي: <strong style={{color:"var(--white)"}}>{a.totalReferrals||0}</strong> •
-                    معلّق: <strong style={{color:"var(--warn)"}}>{a.pendingReferrals||0}</strong> •
-                    مدفوع: <strong style={{color:"var(--ok)"}}>{a.paidReferrals||0}</strong><br/>
+                    💹 العمولة: <strong style={{color:"var(--gold)"}}>{a.commissionPct}%</strong> •
+                    📊 الإحالات: <strong style={{color:"var(--white)"}}>{a.totalReferrals||0}</strong> •
+                    💵 المدفوع: <strong style={{color:"var(--ok)"}}>{totalPaid.toLocaleString()} د.ل</strong><br/>
                     {refSubs.length>0&&<>📋 {refSubs.map(s=><span key={s.id} style={{fontSize:10,background:"rgba(201,168,76,.1)",padding:"1px 6px",borderRadius:10,marginLeft:4,color:"var(--gold)"}}>{s.code}</span>)}<br/></>}
                     {a.notes&&<>📝 {a.notes}</>}
                   </div>
+                  {selAff?.id===a.id&&(
+                    <div style={{marginTop:12,borderTop:"1px solid var(--border)",paddingTop:12}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"var(--gold)",marginBottom:8}}>📜 سجل الدفعات</div>
+                      {affPays.length===0
+                        ?<div style={{fontSize:12,color:"var(--gray)",textAlign:"center",padding:"12px 0"}}>لا يوجد دفعات مسجلة بعد</div>
+                        :affPays.map((p,i)=>(
+                          <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
+                            background:i%2===0?"rgba(255,255,255,.03)":"rgba(255,255,255,.01)",borderRadius:8,marginBottom:4}}>
+                            <div style={{flex:1}}>
+                              <span style={{fontWeight:700,color:"var(--ok)",fontSize:14}}>{(p.amount||0).toLocaleString()} د.ل</span>
+                              <span style={{fontSize:11,color:"var(--gray)",marginRight:8}}> · {p.date}</span>
+                              {p.note&&<span style={{fontSize:11,color:"var(--gray2)"}}> · {p.note}</span>}
+                            </div>
+                            <button className="ib" style={{fontSize:11,padding:"3px 7px"}} onClick={()=>deletePayment(a.id,p.id)}>🗑</button>
+                          </div>
+                        ))
+                      }
+                      <div style={{marginTop:8,padding:"8px 12px",background:"rgba(201,168,76,.06)",
+                        borderRadius:8,fontSize:12,fontWeight:700,color:"var(--gold)"}}>
+                        المجموع: {totalPaid.toLocaleString()} د.ل
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </>
         )}
 
+        {/* MODAL: New Subscription */}
         {modal==="sub"&&(
           <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div className="drawer">
@@ -865,9 +929,11 @@ function AdminPanel({user, onBack}) {
                   <label className="fl">الباقة</label>
                   <div style={{display:"flex",gap:8,marginBottom:10}}>
                     {PLANS.map(p=>(
-                      <button key={p.id} type="button" className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
+                      <button key={p.id} type="button"
+                        className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
                         onClick={()=>setForm(f=>({...f,plan:p.id,customDays:""}))}>
-                        {p.id==="3m"?"🥉":p.id==="6m"?"🥈":"🥇"}<br/>{p.label}
+                        {p.label}<br/>
+                        <span style={{fontSize:11,opacity:.8}}>${p.price}</span>
                       </button>
                     ))}
                   </div>
@@ -876,25 +942,36 @@ function AdminPanel({user, onBack}) {
                       value={form.customDays||""} onChange={e=>setForm(f=>({...f,customDays:e.target.value,plan:""}))} style={{flex:1}}/>
                     <span style={{fontSize:12,color:"var(--gray)",whiteSpace:"nowrap"}}>يوم</span>
                   </div>
-                  {(form.plan||form.customDays)&&(
-                    <div style={{marginTop:6,fontSize:12,color:"var(--ok)"}}>
-                      ✅ ينتهي في: {(()=>{const d=new Date();if(form.customDays)d.setDate(d.getDate()+parseInt(form.customDays));else{const p=PLANS.find(x=>x.id===form.plan);if(p)d.setMonth(d.getMonth()+p.months);}if(form.affiliateCode)d.setDate(d.getDate()+7);return d.toLocaleDateString("ar-LY");})()}
-                      {form.affiliateCode&&<span style={{color:"var(--gold)"}}> + أسبوع مجاني 🎁</span>}
-                    </div>
-                  )}
+                  {(form.plan||form.customDays)&&(()=>{
+                    const d=new Date();
+                    if(form.customDays) d.setDate(d.getDate()+parseInt(form.customDays));
+                    else{const p=PLANS.find(x=>x.id===form.plan);if(p)d.setMonth(d.getMonth()+p.months);}
+                    if(form.affiliateCode) d.setDate(d.getDate()+7);
+                    const selPlan=PLANS.find(x=>x.id===form.plan);
+                    const price=selPlan?selPlan.price:null;
+                    const comm=price?Math.round(price*COMMISSION_PCT)/10:null;
+                    return(
+                      <div style={{marginTop:8,background:"rgba(201,168,76,.07)",border:"1px solid rgba(201,168,76,.2)",borderRadius:8,padding:"8px 12px",fontSize:12}}>
+                        <div style={{color:"var(--ok)"}}>✅ ينتهي في: {d.toLocaleDateString("ar-LY")}{form.affiliateCode&&<span style={{color:"var(--gold)"}}> + أسبوع هدية 🎁</span>}</div>
+                        {price&&<div style={{marginTop:4,color:"var(--gold)"}}>💵 السعر: <strong>${price}</strong> &nbsp;·&nbsp; عمولة المسوّق: <strong>${comm}</strong></div>}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="fg">
-                  <label className="fl">الحد الأقصى للعملاء</label>
-                  <input className="fi" type="number" placeholder="100" value={form.maxClients}
+                  <label className="fl">الحد الأقصى للعملاء (الحد الأدنى 500)</label>
+                  <input className="fi" type="number" placeholder="500" value={form.maxClients} min="500"
                     onChange={e=>setForm(f=>({...f,maxClients:e.target.value}))} inputMode="numeric"/>
+                  {form.maxClients&&parseInt(form.maxClients)<500&&
+                    <span className="et">الحد الأدنى المسموح هو 500 عميل</span>}
                 </div>
                 <div className="fg">
                   <label className="fl">🤝 كود المسوّق (اختياري)</label>
                   <select className="fi" value={form.affiliateCode} onChange={e=>setForm(f=>({...f,affiliateCode:e.target.value}))}>
                     <option value="">بدون مسوّق</option>
-                    {affiliates.map(a=><option key={a.id} value={a.code}>{a.name} — {a.code}</option>)}
+                    {affiliates.map(a=><option key={a.id} value={a.code}>{a.name} — {a.code} ({a.commissionPct}%)</option>)}
                   </select>
-                  {form.affiliateCode&&<span style={{fontSize:11,color:"var(--gold)",marginTop:4,display:"block"}}>🎁 سيحصل العميل على أسبوع مجاني إضافي</span>}
+                  {form.affiliateCode&&<span style={{fontSize:11,color:"var(--gold)",marginTop:4,display:"block"}}>🎁 العميل يحصل على أسبوع مجاني إضافي</span>}
                 </div>
                 <div className="fg">
                   <label className="fl">ملاحظة</label>
@@ -910,6 +987,7 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
+        {/* MODAL: New Affiliate */}
         {modal==="aff"&&(
           <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div className="drawer">
@@ -922,7 +1000,7 @@ function AdminPanel({user, onBack}) {
                 </div>
                 <div className="fg">
                   <label className="fl">كود الإحالة *</label>
-                  <input className="fi ltr" placeholder="مثال: MOHAMAD10" value={affForm.code}
+                  <input className="fi ltr" placeholder="MOHAMAD10" value={affForm.code}
                     onChange={e=>setAffForm(f=>({...f,code:e.target.value.toUpperCase().replace(/\s/g,"")}))}
                     style={{letterSpacing:2}} autoCapitalize="characters" autoCorrect="off"/>
                   <span style={{fontSize:11,color:"var(--gray)",marginTop:4,display:"block"}}>أحرف وأرقام فقط، بدون مسافات</span>
@@ -938,6 +1016,14 @@ function AdminPanel({user, onBack}) {
                     {[10,15,20,25].map(p=>(
                       <button key={p} type="button" className={`plan-btn${affForm.commissionPct===p?" on":""}`}
                         onClick={()=>setAffForm(f=>({...f,commissionPct:p}))}>{p}%</button>
+                    ))}
+                  </div>
+                  {/* Show commission amount per plan */}
+                  <div style={{background:"rgba(255,255,255,.04)",borderRadius:8,padding:"8px 12px",fontSize:11,color:"var(--gray2)",marginBottom:8}}>
+                    {PLANS.map(p=>(
+                      <span key={p.id} style={{marginLeft:12}}>
+                        {p.label}: <strong style={{color:"var(--gold)"}}>${(p.price*affForm.commissionPct/100).toFixed(1)}</strong>
+                      </span>
                     ))}
                   </div>
                   <input className="fi" type="number" placeholder="أو أدخل نسبة مخصصة"
@@ -957,12 +1043,38 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
-        {notif&&<Notif n={notif} onClose={()=>setNotif(null)}/>}
-      </div>
-    </div>
-  );
-}
-
+        {/* MODAL: Add Payment */}
+        {payModal&&(
+          <div className="dov" onClick={e=>e.target===e.currentTarget&&setPayModal(null)}>
+            <div className="drawer" style={{maxHeight:420}}>
+              <div className="dhead">
+                <span className="dt">💰 تسجيل دفعة — {payModal.name}</span>
+                <button className="dc" onClick={()=>setPayModal(null)}>✕</button>
+              </div>
+              <div className="dbody">
+                <div className="fg">
+                  <label className="fl">المبلغ (د.ل) *</label>
+                  <input className="fi" type="number" inputMode="decimal" placeholder="0.00"
+                    value={payForm.amount} onChange={e=>setPayForm(f=>({...f,amount:e.target.value}))}/>
+                </div>
+                <div className="fg">
+                  <label className="fl">التاريخ *</label>
+                  <input className="fi" type="date" value={payForm.date}
+                    onChange={e=>setPayForm(f=>({...f,date:e.target.value}))}/>
+                </div>
+                <div className="fg">
+                  <label className="fl">ملاحظة</label>
+                  <input className="fi" placeholder="مثال: دفع عبر تحويل بنكي"
+                    value={payForm.note} onChange={e=>setPayForm(f=>({...f,note:e.target.value}))}/>
+                </div>
+              </div>
+              <div className="dfoot">
+                <button className="bs" onClick={()=>setPayModal(null)}>إلغاء</button>
+                <button className="bsv" onClick={addPayment} disabled={saving}>{saving?<span className="spin"/>:"💾 حفظ"}</button>
+              </div>
+            </div>
+          </div>
+        )}
 
 // ─── CLIENT FORM ──────────────────────────────────────────────
 const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
@@ -1448,7 +1560,18 @@ export default function App() {
       <main className="main">
         {subStatus==="expired"&&<div className="sub-expired">⚠️ انتهى اشتراكك — مشاهدة فقط. تواصل مع المسؤول للتجديد.</div>}
         {subStatus==="active"&&subDays<=7&&subDays>0&&subDays<9999&&<div className="mw">⚠️ اشتراكك ينتهي خلال {subDays} أيام. تواصل مع المسؤول للتجديد.</div>}
-        {atLimit&&canWrite&&<div className="mw">🚫 وصلت للحد الأقصى ({maxClients} عميل). تواصل مع المسؤول للترقية.</div>}
+        {atLimit&&canWrite&&(
+          <div style={{background:"rgba(231,76,60,.08)",border:"1px solid rgba(231,76,60,.25)",
+            borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",
+            alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+            <div style={{fontSize:13,color:"#ff8a80"}}>
+              🚫 وصلت للحد الأقصى <strong>({maxClients} عميل)</strong> — لا يمكن إضافة المزيد
+            </div>
+            <div style={{fontSize:12,color:"var(--gray2)"}}>
+              تواصل مع المسؤول لزيادة الحد أو ترقية باقتك
+            </div>
+          </div>
+        )}
 
         {/* DASHBOARD */}
         {page==="dashboard"&&(
@@ -1462,13 +1585,23 @@ export default function App() {
             </div>
             {maxClients&&maxClients<999999&&(
               <div className="limit-bar">
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <span>العملاء المستخدمة</span>
-                  <span style={{color:total>=maxClients?"var(--err)":"var(--gold)",fontWeight:700}}>{total} / {maxClients}</span>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span>استخدام الباقة</span>
+                  <span style={{color:total>=maxClients?"var(--err)":total/maxClients>0.85?"var(--warn)":"var(--gold)",fontWeight:700}}>
+                    {total} / {maxClients} عميل
+                    {total>=maxClients&&" 🚫 وصلت للحد"}
+                    {total/maxClients>0.85&&total<maxClients&&" ⚠️ اقتربت من الحد"}
+                  </span>
                 </div>
                 <div className="limit-progress">
-                  <div className={`limit-fill${total/maxClients>0.85?" danger":""}`} style={{width:`${Math.min(total/maxClients*100,100)}%`}}/>
+                  <div className={`limit-fill${total/maxClients>0.85?" danger":""}`}
+                    style={{width:`${Math.min(total/maxClients*100,100)}%`}}/>
                 </div>
+                {total>=maxClients&&(
+                  <div style={{marginTop:6,fontSize:11,color:"#ff8a80"}}>
+                    تواصل مع المسؤول لزيادة الحد أو ترقية باقتك 👆
+                  </div>
+                )}
               </div>
             )}
             <div className="stats">
