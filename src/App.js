@@ -905,8 +905,14 @@ function AdminPanel({user, onBack}) {
                       notify(`تم تحديث الحد إلى ${val} عميل ✅`);
                     }}>👥 {s.maxClients||"∞"} عميل</button>
                     <button className="ab-btn" title="الأجهزة المسجّلة" onClick={async()=>{
-                      const devList=Object.values(s.devices||{}).map((d,i)=>`${i+1}. ${d.type||"جهاز"} — ${d.lastSeen?new Date(d.lastSeen).toLocaleDateString("ar-LY"):""}`).join("\n");
-                      if(!window.confirm(`الأجهزة (${Object.keys(s.devices||{}).length}/7):\n\n${devList||"لا يوجد أجهزة"}\n\nهل تريد إعادة الضبط؟`))return;
+                      const devs = Object.values(s.devices||{});
+                      const devList = devs.length
+                        ? devs.map((d,i)=>{
+                            const date = d.lastSeen ? new Date(d.lastSeen).toLocaleDateString("ar-LY") : "—";
+                            return `${i+1}. ${d.type||"جهاز غير معروف"}  ·  ${date}`;
+                          }).join("\n")
+                        : "لا يوجد أجهزة مسجّلة";
+                      if(!window.confirm(`📱 الأجهزة المسجّلة (${devs.length}/7)\n${"─".repeat(30)}\n${devList}\n${"─".repeat(30)}\nهل تريد إعادة ضبط جميع الأجهزة؟`))return;
                       await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
                       notify("تم إعادة ضبط الأجهزة ✅");
                     }}>📱 {Object.keys(s.devices||{}).length}/7</button>
@@ -1472,41 +1478,17 @@ export default function App() {
       const devices = sub.devices || {};
       const ua = navigator.userAgent;
       const getDeviceInfo = () => {
-        // Device type
-        let device = "جهاز غير معروف";
-        if(/iPhone/i.test(ua)){
-          const match = ua.match(/iPhone OS ([\d_]+)/);
-          const ver = match ? match[1].replace(/_/g,".") : "";
-          device = `iPhone (iOS ${ver})`;
-        } else if(/iPad/i.test(ua)){
-          const match = ua.match(/OS ([\d_]+)/);
-          const ver = match ? match[1].replace(/_/g,".") : "";
-          device = `iPad (iPadOS ${ver})`;
-        } else if(/Android/i.test(ua)){
-          const match = ua.match(/Android ([\d.]+)/);
-          const ver = match ? match[1] : "";
-          const samsung = /Samsung|SM-/i.test(ua);
-          const huawei = /Huawei|HUAWEI/i.test(ua);
-          const xiaomi = /Xiaomi|Redmi/i.test(ua);
-          const brand = samsung?"Samsung":huawei?"Huawei":xiaomi?"Xiaomi":"Android";
-          device = `${brand} (Android ${ver})`;
-        } else if(/Windows/i.test(ua)){
-          const match = ua.match(/Windows NT ([\d.]+)/);
-          const ver = match?{10:"10",6.3:"8.1",6.2:"8",6.1:"7"}[match[1]]||match[1]:"";
-          device = `Windows ${ver} 💻`;
-        } else if(/Mac/i.test(ua)){
-          const match = ua.match(/Mac OS X ([\d_]+)/);
-          const ver = match ? match[1].replace(/_/g,".") : "";
-          device = `Mac (macOS ${ver}) 💻`;
-        }
-        // Browser
-        let browser = "";
-        if(/CriOS/i.test(ua)) browser = "Chrome";
-        else if(/FxiOS/i.test(ua)) browser = "Firefox";
-        else if(/Safari/i.test(ua)&&!/Chrome/i.test(ua)) browser = "Safari";
-        else if(/Chrome/i.test(ua)) browser = "Chrome";
-        else if(/Firefox/i.test(ua)) browser = "Firefox";
-        return browser ? `${device} · ${browser}` : device;
+        if(/iPhone/i.test(ua)) return "iPhone 📱";
+        if(/iPad/i.test(ua)) return "iPad 📱";
+        if(/Samsung|SM-/i.test(ua)) return "Samsung 📱";
+        if(/Huawei|HUAWEI/i.test(ua)) return "Huawei 📱";
+        if(/Xiaomi|Redmi/i.test(ua)) return "Xiaomi 📱";
+        if(/Oppo/i.test(ua)) return "Oppo 📱";
+        if(/Vivo/i.test(ua)) return "Vivo 📱";
+        if(/Android/i.test(ua)) return "Android 📱";
+        if(/Windows/i.test(ua)) return "Windows 💻";
+        if(/Mac/i.test(ua)) return "Mac 💻";
+        return "جهاز غير معروف";
       };
       const deviceType = getDeviceInfo();
       const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString(), type: deviceType };
