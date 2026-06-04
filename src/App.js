@@ -146,14 +146,24 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .code-input:focus{border-color:var(--gold)}
 
 .admin-wrap{width:100%;max-width:700px;margin:0 auto;padding:20px}
-.sub-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px}
-.sub-card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.sub-code{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--gold);font-weight:700;letter-spacing:2px}
-.sub-meta{font-size:12px;color:var(--gray2);margin-top:6px;line-height:1.9}
-.status-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-.chip-ok{background:rgba(46,204,113,.1);color:var(--ok);border:1px solid rgba(46,204,113,.2)}
-.chip-exp{background:rgba(231,76,60,.1);color:var(--err);border:1px solid rgba(231,76,60,.2)}
-.chip-free{background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.2)}
+.sub-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;transition:border-color .2s}
+.sub-card:hover{border-color:rgba(201,168,76,.35)}
+.sub-card-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.sub-code{font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--gold);font-weight:700;letter-spacing:2px}
+.sub-meta{font-size:12px;color:var(--gray2);margin-top:8px;line-height:2}
+.status-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700}
+.chip-ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.25)}
+.chip-exp{background:rgba(231,76,60,.12);color:var(--err);border:1px solid rgba(231,76,60,.25)}
+.chip-free{background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.25)}
+/* Admin action buttons */
+.admin-action-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
+.ab-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;
+  color:var(--gray2);cursor:pointer;padding:6px 11px;font-size:12px;font-family:'Tajawal',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.ab-btn:hover{background:rgba(255,255,255,.1);color:var(--white)}
+.ab-btn.green{color:var(--ok);border-color:rgba(46,204,113,.2)}
+.ab-btn.gold{color:var(--gold);border-color:rgba(201,168,76,.3)}
+.ab-btn.red{color:var(--err);border-color:rgba(231,76,60,.2)}
 .plan-btn{flex:1;padding:10px 6px;border-radius:10px;cursor:pointer;border:1.5px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.05);color:var(--gray2);font-family:'Tajawal',sans-serif;
   font-size:13px;font-weight:700;transition:all .15s;text-align:center}
@@ -880,22 +890,27 @@ function AdminPanel({user, onBack}) {
                     </div>
                   </div>
                   {/* Action buttons row */}
-                  <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                    <button className="ib" title="نسخ رسالة الترحيب" onClick={()=>{
+                  <div className="admin-action-row">
+                    <button className="ab-btn gold" title="نسخ رسالة الترحيب" onClick={()=>{
                       const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
                       navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
                     }}>✉️ رسالة</button>
-                    <button className="ib" title="تجديد الباقة" onClick={()=>renewSub(s)}>🔄 تجديد</button>
-                    <button className="ib" title="تعديل عدد العملاء" onClick={async()=>{
+                    <button className="ab-btn" title="تجديد الباقة" onClick={()=>renewSub(s)}>🔄 تجديد</button>
+                    <button className="ab-btn" title="تعديل عدد العملاء" onClick={async()=>{
                       const newMax=prompt("أدخل الحد الجديد للعملاء (الحد الأدنى 500):",s.maxClients||500);
                       if(!newMax)return;
                       const val=parseInt(newMax);
                       if(val<500){alert("الحد الأدنى هو 500 عميل");return;}
                       await updateDoc(doc(db,"subscriptions",s.id),{maxClients:val});
                       notify(`تم تحديث الحد إلى ${val} عميل ✅`);
-                    }}>👥 {s.maxClients||"∞"}</button>
-                    <button className="ib" title="إعادة ضبط الأجهزة" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱 {Object.keys(s.devices||{}).length}/3</button>
-                    <button className="ib" title="حذف" onClick={()=>deleteSub(s.id)}>🗑</button>
+                    }}>👥 {s.maxClients||"∞"} عميل</button>
+                    <button className="ab-btn" title="الأجهزة المسجّلة" onClick={async()=>{
+                      const devList=Object.values(s.devices||{}).map((d,i)=>`${i+1}. ${d.type||"جهاز"} — ${d.lastSeen?new Date(d.lastSeen).toLocaleDateString("ar-LY"):""}`).join("\n");
+                      if(!window.confirm(`الأجهزة (${Object.keys(s.devices||{}).length}/7):\n\n${devList||"لا يوجد أجهزة"}\n\nهل تريد إعادة الضبط؟`))return;
+                      await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
+                      notify("تم إعادة ضبط الأجهزة ✅");
+                    }}>📱 {Object.keys(s.devices||{}).length}/7</button>
+                    <button className="ab-btn red" title="حذف" onClick={()=>deleteSub(s.id)}>🗑 حذف</button>
                   </div>
                   <div className="sub-meta" style={{marginTop:8}}>
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
@@ -929,11 +944,10 @@ function AdminPanel({user, onBack}) {
                       {a.handle&&<span style={{fontSize:12,color:"var(--gray)",marginRight:8}}>@{a.handle}</span>}
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                      <button className="ib" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
-                      <button className="ib" style={{color:"var(--ok)",borderColor:"rgba(46,204,113,.3)"}}
-                        onClick={()=>{setPayModal(a);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});}}>💰 دفعة</button>
-                      <button className="ib" onClick={()=>setSelAff(selAff?.id===a.id?null:a)}>📜 ({affPays.length})</button>
-                      <button className="ib" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");}}>🗑</button>
+                      <button className="ab-btn gold" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
+                      <button className="ab-btn green" onClick={()=>{setPayModal(a);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});}}>💰 دفعة</button>
+                      <button className="ab-btn" onClick={()=>setSelAff(selAff?.id===a.id?null:a)}>📜 السجل ({affPays.length})</button>
+                      <button className="ab-btn red" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");}}>🗑 حذف</button>
                     </div>
                   </div>
                   <div className="sub-meta">
@@ -1453,10 +1467,17 @@ export default function App() {
       setMaxClients(sub.maxClients||999999);
       if(days<=0){setSubStatus("expired");return;}
 
-      // Device tracking — max 3 devices
+      // Device tracking — max 7 devices
       const deviceId = getDeviceId();
       const devices = sub.devices || {};
-      const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString() };
+      const ua = navigator.userAgent;
+      const deviceType = /iPhone/i.test(ua) ? "iPhone 📱" :
+                         /iPad/i.test(ua) ? "iPad 📱" :
+                         /Android/i.test(ua) ? "Android 📱" :
+                         /Windows/i.test(ua) ? "Windows 💻" :
+                         /Mac/i.test(ua) ? "Mac 💻" :
+                         /Linux/i.test(ua) ? "Linux 💻" : "جهاز غير معروف";
+      const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString(), type: deviceType };
 
       if(devices[deviceId]){
         // Known device — update lastSeen silently
@@ -1465,12 +1486,10 @@ export default function App() {
         });
         setSubStatus("active");
       } else {
-        // New device — check limit
         const deviceCount = Object.keys(devices).length;
-        if(deviceCount >= 3){
+        if(deviceCount >= 7){
           setSubStatus("device_limit");
         } else {
-          // Register new device
           await updateDoc(doc(db,"subscriptions",subDoc.id),{
             [`devices.${deviceId}`]: deviceEntry
           });
@@ -1581,7 +1600,7 @@ export default function App() {
         <div style={{background:"rgba(231,76,60,.08)",border:"1px solid rgba(231,76,60,.25)",borderRadius:12,padding:20,marginBottom:20,textAlign:"center"}}>
           <div style={{fontSize:40,marginBottom:12}}>📱📱📱</div>
           <p style={{color:"var(--gray2)",fontSize:14,lineHeight:1.8}}>
-            اشتراكك مسجّل على <strong style={{color:"var(--white)"}}>3 أجهزة</strong> وهو الحد الأقصى المسموح به.<br/>
+            اشتراكك مسجّل على <strong style={{color:"var(--white)"}}>7 أجهزة</strong> وهو الحد الأقصى المسموح به.<br/>
             لإضافة هذا الجهاز، تواصل مع المسؤول لإعادة ضبط أجهزتك.
           </p>
         </div>
