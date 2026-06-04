@@ -553,7 +553,6 @@ function ActivationScreen({user, onActivated}) {
     const trimmed=code.trim().toUpperCase();
     if(!trimmed){setErr("أدخل كود التفعيل");setLoad(false);return;}
     try{
-      // Validate subscription code
       const ref=doc(db,"subscriptions",trimmed);
       const snap=await getDoc(ref);
       if(!snap.exists()){setErr("الكود غير صحيح أو غير موجود");setLoad(false);return;}
@@ -570,18 +569,41 @@ function ActivationScreen({user, onActivated}) {
         const affSnap=await getDoc(affRef);
         if(!affSnap.exists()){setErr("كود الإحالة غير صحيح");setLoad(false);return;}
         const affData=affSnap.data();
-        // Check if user already used a referral code
         const usersRef=doc(db,"users",user.uid);
         const userSnap=await getDoc(usersRef);
         if(userSnap.exists()&&userSnap.data().usedReferral){
           setErr("لقد استخدمت كود إحالة مسبقاً");setLoad(false);return;
         }
         bonusDays=7;
+
+        // Auto calculate commission from subscription plan price
+        const plan=PLANS.find(p=>p.id===data.plan);
+        const planPrice=plan?plan.price:null;
+        const commPct=affData.commissionPct||COMMISSION_PCT;
+        const commAmount=planPrice?Math.round(planPrice*commPct)/10:null;
+
         // Update affiliate stats
         await updateDoc(affRef,{
           totalReferrals:(affData.totalReferrals||0)+1,
-          pendingReferrals:(affData.pendingReferrals||0)+1
         });
+
+        // Auto-add commission entry to payments subcollection
+        if(commAmount){
+          await addDoc(collection(db,`affiliates/${affSnap.id}/payments`),{
+            amount:commAmount,
+            note:`عمولة تلقائية — ${user.email} (${plan?.label||data.plan}) $${planPrice}`,
+            date:new Date().toISOString().split("T")[0],
+            paidBy:"تلقائي",
+            isAuto:true,
+            subscriptionCode:trimmed,
+            createdAt:serverTimestamp()
+          });
+          // Update totalPaid
+          await updateDoc(affRef,{
+            totalPaid:(affData.totalPaid||0)+commAmount
+          });
+        }
+
         // Save user's referral usage
         await setDoc(doc(db,"users",user.uid),{
           uid:user.uid,email:user.email,
@@ -590,7 +612,35 @@ function ActivationScreen({user, onActivated}) {
         },{merge:true});
       }
 
-      // Add bonus days to subscription expiry
+      // Also handle subscription's built-in affiliateCode
+      if(!refTrimmed&&data.affiliateCode){
+        const builtInAffRef=doc(db,"affiliates",data.affiliateCode);
+        const builtInAffSnap=await getDoc(builtInAffRef);
+        if(builtInAffSnap.exists()){
+          const builtInAff=builtInAffSnap.data();
+          const plan=PLANS.find(p=>p.id===data.plan);
+          const planPrice=plan?plan.price:null;
+          const commPct=builtInAff.commissionPct||COMMISSION_PCT;
+          const commAmount=planPrice?Math.round(planPrice*commPct)/10:null;
+          if(commAmount){
+            await addDoc(collection(db,`affiliates/${builtInAffSnap.id}/payments`),{
+              amount:commAmount,
+              note:`عمولة تلقائية — ${user.email} (${plan?.label||data.plan}) $${planPrice}`,
+              date:new Date().toISOString().split("T")[0],
+              paidBy:"تلقائي",
+              isAuto:true,
+              subscriptionCode:trimmed,
+              createdAt:serverTimestamp()
+            });
+            await updateDoc(builtInAffRef,{
+              totalReferrals:(builtInAff.totalReferrals||0)+1,
+              totalPaid:(builtInAff.totalPaid||0)+commAmount
+            });
+          }
+        }
+      }
+
+      // Activate subscription
       if(bonusDays>0){
         const newExp=new Date(exp);
         newExp.setDate(newExp.getDate()+bonusDays);
