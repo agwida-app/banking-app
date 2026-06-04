@@ -873,22 +873,32 @@ function AdminPanel({user, onBack}) {
                         style={{background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",borderRadius:7,color:"var(--gold)",cursor:"pointer",padding:"3px 8px",fontSize:14,marginRight:8,verticalAlign:"middle"}}>📋</button>
                       {s.planLabel&&<span style={{fontSize:11,color:"var(--gray)",background:"rgba(255,255,255,.06)",padding:"2px 8px",borderRadius:20}}>{s.planLabel}</span>}
                     </div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
                       {isActive&&<span className="status-chip chip-ok">✅ مفعّل</span>}
                       {isFree&&<span className="status-chip chip-free">🔓 متاح</span>}
                       {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
-                      <button className="ib" onClick={()=>{
-                        const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
-                        navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
-                      }}>✉️</button>
-                      <button className="ib" onClick={()=>renewSub(s)}>🔄</button>
-                      <button className="ib" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱</button>
-                      <button className="ib" onClick={()=>deleteSub(s.id)}>🗑</button>
                     </div>
                   </div>
-                  <div className="sub-meta">
+                  {/* Action buttons row */}
+                  <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                    <button className="ib" title="نسخ رسالة الترحيب" onClick={()=>{
+                      const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
+                      navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
+                    }}>✉️ رسالة</button>
+                    <button className="ib" title="تجديد الباقة" onClick={()=>renewSub(s)}>🔄 تجديد</button>
+                    <button className="ib" title="تعديل عدد العملاء" onClick={async()=>{
+                      const newMax=prompt("أدخل الحد الجديد للعملاء (الحد الأدنى 500):",s.maxClients||500);
+                      if(!newMax)return;
+                      const val=parseInt(newMax);
+                      if(val<500){alert("الحد الأدنى هو 500 عميل");return;}
+                      await updateDoc(doc(db,"subscriptions",s.id),{maxClients:val});
+                      notify(`تم تحديث الحد إلى ${val} عميل ✅`);
+                    }}>👥 {s.maxClients||"∞"}</button>
+                    <button className="ib" title="إعادة ضبط الأجهزة" onClick={async()=>{if(!window.confirm("إعادة ضبط الأجهزة؟"))return;await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});notify("تم ✅");}}>📱 {Object.keys(s.devices||{}).length}/3</button>
+                    <button className="ib" title="حذف" onClick={()=>deleteSub(s.id)}>🗑</button>
+                  </div>
+                  <div className="sub-meta" style={{marginTop:8}}>
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
-                    👥 الحد: {s.maxClients||"∞"} عميل • 📱 الأجهزة: {Object.keys(s.devices||{}).length}/3<br/>
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
                     {s.notes&&<>📝 {s.notes}</>}
@@ -904,7 +914,7 @@ function AdminPanel({user, onBack}) {
             <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
               المسوّقون: <strong style={{color:"var(--white)"}}>{affiliates.length}</strong> •
               إجمالي الإحالات: <strong style={{color:"var(--ok)"}}>{affiliates.reduce((s,a)=>s+(a.totalReferrals||0),0)}</strong> •
-              إجمالي المدفوع: <strong style={{color:"var(--gold)"}}>{affiliates.reduce((s,a)=>s+(a.totalPaid||0),0).toLocaleString()} د.ل</strong>
+              إجمالي المدفوع: <strong style={{color:"var(--gold)"}}>{affiliates.reduce((s,a)=>s+(a.totalPaid||0),0).toLocaleString()} $</strong>
             </div>
             {affiliates.length===0&&<div className="emp"><div className="ei">🤝</div><div className="et2">لا يوجد مسوّقون بعد</div></div>}
             {affiliates.map(a=>{
@@ -929,7 +939,7 @@ function AdminPanel({user, onBack}) {
                   <div className="sub-meta">
                     💹 العمولة: <strong style={{color:"var(--gold)"}}>{a.commissionPct}%</strong> •
                     📊 الإحالات: <strong style={{color:"var(--white)"}}>{a.totalReferrals||0}</strong> •
-                    💵 المدفوع: <strong style={{color:"var(--ok)"}}>{totalPaid.toLocaleString()} د.ل</strong><br/>
+                    💵 المدفوع: <strong style={{color:"var(--ok)"}}>{totalPaid.toLocaleString()} $</strong><br/>
                     {refSubs.length>0&&<>📋 {refSubs.map(s=><span key={s.id} style={{fontSize:10,background:"rgba(201,168,76,.1)",padding:"1px 6px",borderRadius:10,marginLeft:4,color:"var(--gold)"}}>{s.code}</span>)}<br/></>}
                     {a.notes&&<>📝 {a.notes}</>}
                   </div>
@@ -942,7 +952,7 @@ function AdminPanel({user, onBack}) {
                           <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
                             background:i%2===0?"rgba(255,255,255,.03)":"rgba(255,255,255,.01)",borderRadius:8,marginBottom:4}}>
                             <div style={{flex:1}}>
-                              <span style={{fontWeight:700,color:"var(--ok)",fontSize:14}}>{(p.amount||0).toLocaleString()} د.ل</span>
+                              <span style={{fontWeight:700,color:"var(--ok)",fontSize:14}}>{"$"}{(p.amount||0).toLocaleString()}</span>
                               <span style={{fontSize:11,color:"var(--gray)",marginRight:8}}> · {p.date}</span>
                               {p.note&&<span style={{fontSize:11,color:"var(--gray2)"}}> · {p.note}</span>}
                             </div>
@@ -952,7 +962,7 @@ function AdminPanel({user, onBack}) {
                       }
                       <div style={{marginTop:8,padding:"8px 12px",background:"rgba(201,168,76,.06)",
                         borderRadius:8,fontSize:12,fontWeight:700,color:"var(--gold)"}}>
-                        المجموع: {totalPaid.toLocaleString()} د.ل
+                        المجموع: {"$"}{totalPaid.toLocaleString()}
                       </div>
                     </div>
                   )}
