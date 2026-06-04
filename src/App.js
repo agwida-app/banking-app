@@ -580,7 +580,7 @@ function ActivationScreen({user, onActivated}) {
         const plan=PLANS.find(p=>p.id===data.plan);
         const planPrice=plan?plan.price:null;
         const commPct=affData.commissionPct||COMMISSION_PCT;
-        const commAmount=planPrice?Math.round(planPrice*commPct)/10:null;
+        const commAmount=planPrice?Math.round(planPrice*commPct/100*100)/100:null;
 
         // Update affiliate stats
         await updateDoc(affRef,{
@@ -621,7 +621,7 @@ function ActivationScreen({user, onActivated}) {
           const plan=PLANS.find(p=>p.id===data.plan);
           const planPrice=plan?plan.price:null;
           const commPct=builtInAff.commissionPct||COMMISSION_PCT;
-          const commAmount=planPrice?Math.round(planPrice*commPct)/10:null;
+          const commAmount=planPrice?Math.round(planPrice*commPct/100*100)/100:null;
           if(commAmount){
             await addDoc(collection(db,`affiliates/${builtInAffSnap.id}/payments`),{
               amount:commAmount,
@@ -1114,7 +1114,7 @@ function AdminPanel({user, onBack}) {
               </div>
               <div className="dbody">
                 <div className="fg">
-                  <label className="fl">المبلغ (د.ل) *</label>
+                  <label className="fl">المبلغ ($) *</label>
                   <input className="fi" type="number" inputMode="decimal" placeholder="0.00"
                     value={payForm.amount} onChange={e=>setPayForm(f=>({...f,amount:e.target.value}))}/>
                 </div>
