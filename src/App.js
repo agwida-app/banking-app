@@ -75,7 +75,7 @@ const PLANS = [
 const COMMISSION_PCT = 10; // نسبة العمولة الثابتة
 
 const EMPTY = {
-  name:"",bankType:"",bankTypeOther:"",phone1:"",phone2:"",nationalId:"",
+  name:"",bankType:"",bankTypeOther:"",phone1:"",phone2:"",nationalId:"",passportId:"",
   accountNumber:"",iban:"",amount:"",currency:"د.ل",
   purchasedBy:"",paymentType:"",cardBooked:false,bookingDate:"",
   pinCode:"",soldTo:"",isSold:false,notes:""
@@ -375,7 +375,7 @@ function generatePDF(clients, single = null) {
           ["الاسم الكامل",single.name],
           ["المصرف",single.bankType==="أخرى"?(single.bankTypeOther||"أخرى"):single.bankType],
           ["الهاتف 1",single.phone1],["الهاتف 2",single.phone2||"—"],
-          ["الرقم الوطني",single.nationalId],["رقم الحساب",single.accountNumber||"—"],
+          ["الرقم الوطني",single.nationalId],["جواز السفر",single.passportId||"—"],["رقم الحساب",single.accountNumber||"—"],
           ["رقم IBAN",single.iban||"—"],
           ["المبلغ المدفوع",single.amount?parseFloat(single.amount).toLocaleString()+" "+single.currency:"—"],
           ["تم الشراء من طرف",single.purchasedBy||"—"],["نوع الحجز",single.paymentType||"—"],
@@ -504,6 +504,7 @@ function exportCSV(clients) {
     ["الهاتف 1",         c=>c.phone1||""],
     ["الهاتف 2",         c=>c.phone2||""],
     ["الرقم الوطني",     c=>c.nationalId||""],
+    ["جواز السفر",       c=>c.passportId||""],
     ["رقم الحساب",       c=>c.accountNumber||""],
     ["IBAN",             c=>c.iban||""],
     ["المبلغ",           c=>c.amount||""],
@@ -1130,6 +1131,11 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
           value={f.nationalId} onChange={ev=>set("nationalId",ev.target.value)} inputMode="numeric"/>
         {e.nationalId&&<span className="et">{e.nationalId}</span>}
       </div>
+      <div className="fg full"><label className="fl">رقم جواز السفر <span style={{color:"var(--gray)",fontWeight:400,fontSize:11}}>(اختياري)</span></label>
+        <input className="fi ltr" placeholder="A12345678"
+          value={f.passportId||""} onChange={ev=>set("passportId",ev.target.value.toUpperCase())}
+          autoCapitalize="characters" autoCorrect="off"/>
+      </div>
       <div className="fg"><label className="fl">رقم الحساب المصرفي</label>
         <input className={`fi ltr${e.accountNumber?" ef":""}`} placeholder="ACC-123456789"
           value={f.accountNumber} autoCapitalize="characters" autoCorrect="off"
@@ -1212,7 +1218,7 @@ function ViewClient({c,onClose,onEdit}) {
   const bank=c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType;
   const rows=[
     ["الاسم",c.name],["المصرف",bank],["الهاتف 1",c.phone1],["الهاتف 2",c.phone2||"—"],
-    ["الرقم الوطني",c.nationalId],["رقم الحساب",c.accountNumber||"—",true],
+    ["الرقم الوطني",c.nationalId],["جواز السفر",c.passportId||"—"],["رقم الحساب",c.accountNumber||"—",true],
     ["رقم IBAN",c.iban||"—",true],
     ["المبلغ",c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"],
     ["تم الشراء من طرف",c.purchasedBy||"—"],["نوع الحجز",c.paymentType||"—"],
@@ -1468,6 +1474,7 @@ export default function App() {
       c.phone1?.includes(q)||
       c.phone2?.includes(q)||
       c.nationalId?.includes(q)||
+      c.passportId?.toLowerCase().includes(q)||
       c.iban?.toLowerCase().includes(q);
     const bank=c.bankType==="أخرى"?c.bankTypeOther||"أخرى":c.bankType;
     const fb=filterBank==="all"||bank===filterBank||c.bankType===filterBank;
