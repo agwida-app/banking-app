@@ -1010,7 +1010,7 @@ function AdminPanel({user, onBack}) {
                     if(form.affiliateCode) d.setDate(d.getDate()+7);
                     const selPlan=PLANS.find(x=>x.id===form.plan);
                     const price=selPlan?selPlan.price:null;
-                    const comm=price?Math.round(price*COMMISSION_PCT)/10:null;
+                    const comm=price?Math.round(price*COMMISSION_PCT/100*100)/100:null;
                     return(
                       <div style={{marginTop:8,background:"rgba(201,168,76,.07)",border:"1px solid rgba(201,168,76,.2)",borderRadius:8,padding:"8px 12px",fontSize:12}}>
                         <div style={{color:"var(--ok)"}}>✅ ينتهي في: {d.toLocaleDateString("ar-LY")}{form.affiliateCode&&<span style={{color:"var(--gold)"}}> + أسبوع هدية 🎁</span>}</div>
