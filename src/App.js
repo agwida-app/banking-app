@@ -1471,12 +1471,44 @@ export default function App() {
       const deviceId = getDeviceId();
       const devices = sub.devices || {};
       const ua = navigator.userAgent;
-      const deviceType = /iPhone/i.test(ua) ? "iPhone 📱" :
-                         /iPad/i.test(ua) ? "iPad 📱" :
-                         /Android/i.test(ua) ? "Android 📱" :
-                         /Windows/i.test(ua) ? "Windows 💻" :
-                         /Mac/i.test(ua) ? "Mac 💻" :
-                         /Linux/i.test(ua) ? "Linux 💻" : "جهاز غير معروف";
+      const getDeviceInfo = () => {
+        // Device type
+        let device = "جهاز غير معروف";
+        if(/iPhone/i.test(ua)){
+          const match = ua.match(/iPhone OS ([\d_]+)/);
+          const ver = match ? match[1].replace(/_/g,".") : "";
+          device = `iPhone (iOS ${ver})`;
+        } else if(/iPad/i.test(ua)){
+          const match = ua.match(/OS ([\d_]+)/);
+          const ver = match ? match[1].replace(/_/g,".") : "";
+          device = `iPad (iPadOS ${ver})`;
+        } else if(/Android/i.test(ua)){
+          const match = ua.match(/Android ([\d.]+)/);
+          const ver = match ? match[1] : "";
+          const samsung = /Samsung|SM-/i.test(ua);
+          const huawei = /Huawei|HUAWEI/i.test(ua);
+          const xiaomi = /Xiaomi|Redmi/i.test(ua);
+          const brand = samsung?"Samsung":huawei?"Huawei":xiaomi?"Xiaomi":"Android";
+          device = `${brand} (Android ${ver})`;
+        } else if(/Windows/i.test(ua)){
+          const match = ua.match(/Windows NT ([\d.]+)/);
+          const ver = match?{10:"10",6.3:"8.1",6.2:"8",6.1:"7"}[match[1]]||match[1]:"";
+          device = `Windows ${ver} 💻`;
+        } else if(/Mac/i.test(ua)){
+          const match = ua.match(/Mac OS X ([\d_]+)/);
+          const ver = match ? match[1].replace(/_/g,".") : "";
+          device = `Mac (macOS ${ver}) 💻`;
+        }
+        // Browser
+        let browser = "";
+        if(/CriOS/i.test(ua)) browser = "Chrome";
+        else if(/FxiOS/i.test(ua)) browser = "Firefox";
+        else if(/Safari/i.test(ua)&&!/Chrome/i.test(ua)) browser = "Safari";
+        else if(/Chrome/i.test(ua)) browser = "Chrome";
+        else if(/Firefox/i.test(ua)) browser = "Firefox";
+        return browser ? `${device} · ${browser}` : device;
+      };
+      const deviceType = getDeviceInfo();
       const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString(), type: deviceType };
 
       if(devices[deviceId]){
