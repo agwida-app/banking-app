@@ -1077,6 +1077,12 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
+        {notif&&<Notif n={notif} onClose={()=>setNotif(null)}/>}
+      </div>
+    </div>
+  );
+}
+
 // ─── CLIENT FORM ──────────────────────────────────────────────
 const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
   const [f,setF]=useState(()=>init?{...init}:{...EMPTY});
