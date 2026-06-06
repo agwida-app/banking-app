@@ -922,7 +922,8 @@ function AdminPanel({user, onBack}) {
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
-                    {s.notes&&<>📝 {s.notes}</>}
+                    {s.notes&&<span style={{display:"inline-flex",alignItems:"center",gap:6}}>📝 {s.notes} <button className="ab-btn" style={{padding:"2px 7px",fontSize:11}} onClick={async()=>{const n=prompt("تعديل الملاحظة:",s.notes||"");if(n===null)return;await updateDoc(doc(db,"subscriptions",s.id),{notes:n});notify("تم التعديل ✅");}}>✏️</button></span>}
+                    {!s.notes&&<button className="ab-btn" style={{padding:"2px 7px",fontSize:11}} onClick={async()=>{const n=prompt("أضف ملاحظة:","");if(!n)return;await updateDoc(doc(db,"subscriptions",s.id),{notes:n});notify("تم الحفظ ✅");}}>📝 إضافة ملاحظة</button>}
                   </div>
                 </div>
               );
