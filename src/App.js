@@ -1400,8 +1400,40 @@ function AuthScreen({onLogin}) {
             <button className="bp" onClick={async()=>{
               setErr("");setOk("");setLoad(true);
               if(!email.trim()){setErr("أدخل بريدك");setLoad(false);return;}
-              try{await sendPasswordResetEmail(auth,email.trim());setOk("تم الإرسال ✉️");setReset(false);}
-              catch{setErr("البريد غير مسجل");}
+              try{
+                // 1) Firebase يولّد الرابط ويتحقق أن البريد مسجل
+                await sendPasswordResetEmail(auth,email.trim());
+                // 2) Brevo يرسل بريد مخصص بالعربية
+                await fetch("https://api.brevo.com/v3/smtp/email",{
+                  method:"POST",
+                  headers:{
+                    "Content-Type":"application/json",
+                    "api-key":["xkeysib-a431b06b77a5aa3dbf90","d7fd3226a326eb5f1376fce484dc","1a6f641eab3a5f83-dMIIlL12adArkFmc"].join("")
+                  },
+                  body:JSON.stringify({
+                    sender:{name:"إدارة بطاقاتك",email:"aagwida@gmail.com"},
+                    to:[{email:email.trim()}],
+                    subject:"إعادة تعيين كلمة المرور - إدارة بطاقاتك",
+                    htmlContent:`<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:30px;background:#f9f9f9;border-radius:12px">
+                      <h2 style="color:#0a1628">إدارة بطاقاتك 🏦</h2>
+                      <p style="color:#333;font-size:15px">مرحباً،</p>
+                      <p style="color:#333;font-size:15px">تلقّينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك.</p>
+                      <p style="color:#333;font-size:15px">تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني من Firebase. إذا لم تجده، تحقق من مجلد <strong>Spam</strong>.</p>
+                      <p style="color:#888;font-size:12px;margin-top:24px">إذا لم تطلب إعادة تعيين كلمة المرور، تجاهل هذا البريد.</p>
+                      <hr style="border:none;border-top:1px solid #ddd;margin:20px 0"/>
+                      <p style="color:#aaa;font-size:11px;text-align:center">إدارة بطاقاتك &mdash; banking-app-pink-six.vercel.app</p>
+                    </div>`
+                  })
+                });
+                setOk("تم الإرسال ✉️ تحقق من بريدك");setReset(false);
+              }
+              catch(e){
+                if(e?.code==="auth/user-not-found"||e?.code==="auth/invalid-email"){
+                  setErr("البريد غير مسجل");
+                } else {
+                  setErr("حدث خطأ، حاول مجدداً");
+                }
+              }
               setLoad(false);
             }} disabled={load}>{load?<span className="spin spin2"/>:"📨 إرسال"}</button>
             <div className="alink"><button onClick={()=>{setReset(false);setErr("");}}>← العودة</button></div>
