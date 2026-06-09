@@ -5,11 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta name="theme-color" content="#0a1628" />
   <meta name="description" content="نظام إدارة العملاء المصرفيين" />
-  <title>إدارة العملاء المصرفيين</title>
+  <title>إدارة بطاقاتك</title>
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
 </head>
 <body>
   <noscript>يرجى تفعيل JavaScript لتشغيل هذا التطبيق.</noscript>
   <div id="root"></div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(function(reg) { console.log('SW registered'); })
+          .catch(function(err) { console.log('SW error:', err); });
+      });
+    }
+  </script>
 </body>
 </html>
