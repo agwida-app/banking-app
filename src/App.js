@@ -859,7 +859,7 @@ function AdminPanel({user, onBack}) {
         </div>
         <div className="tabs" style={{marginBottom:16}}>
           <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
-          <button className={`tab${tab===="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
+          <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
           <button className={`tab${tab==="password"?" on":""}`} onClick={()=>setTab("password")}>🔑 كلمة المرور</button>
         </div>
 
