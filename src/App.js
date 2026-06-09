@@ -709,6 +709,9 @@ function AdminPanel({user, onBack}) {
   const [saving,setSaving]   = useState(false);
   const [notif,setNotif]     = useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
+  const [pwForm,setPwForm]   = useState({email:"",newPassword:""});
+  const [pwErr,setPwErr]     = useState("");
+  const [pwOk,setPwOk]       = useState("");
 
   useEffect(()=>{
     const q1=query(collection(db,"subscriptions"),orderBy("createdAt","desc"));
@@ -856,7 +859,8 @@ function AdminPanel({user, onBack}) {
         </div>
         <div className="tabs" style={{marginBottom:16}}>
           <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
-          <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
+          <button className={`tab${tab===="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
+          <button className={`tab${tab==="password"?" on":""}`} onClick={()=>setTab("password")}>🔑 كلمة المرور</button>
         </div>
 
         {tab==="subs"&&(
@@ -1158,6 +1162,40 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
+        {tab==="password"&&(
+          <div style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:14,padding:20,maxWidth:420}}>
+            <h3 style={{color:"var(--gold)",marginBottom:16,fontSize:15}}>🔑 تغيير كلمة مرور عميل</h3>
+            {pwErr&&<div className="me">{pwErr}</div>}
+            {pwOk&&<div className="ms">{pwOk}</div>}
+            <div className="fg">
+              <label className="fl">البريد الإلكتروني للعميل</label>
+              <input className="fi" type="email" placeholder="example@gmail.com" value={pwForm.email}
+                onChange={e=>setPwForm(f=>({...f,email:e.target.value}))} autoCapitalize="none" autoCorrect="off"/>
+            </div>
+            <div className="fg">
+              <label className="fl">كلمة المرور الجديدة</label>
+              <input className="fi" type="text" placeholder="كلمة مرور جديدة (6+ أحرف)" value={pwForm.newPassword}
+                onChange={e=>setPwForm(f=>({...f,newPassword:e.target.value}))}/>
+            </div>
+            <button className="bp" onClick={async()=>{
+              setPwErr("");setPwOk("");setSaving(true);
+              if(!pwForm.email.trim()||!pwForm.newPassword.trim()){setPwErr("جميع الحقول مطلوبة");setSaving(false);return;}
+              try{
+                const res=await fetch("/api/changePassword",{
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({adminToken:"AGWIDA_ADMIN_2024",email:pwForm.email.trim(),newPassword:pwForm.newPassword.trim()})
+                });
+                const data=await res.json();
+                if(data.success){setPwOk("تم تغيير كلمة المرور ✅");setPwForm({email:"",newPassword:""});}
+                else setPwErr(data.error||"حدث خطأ");
+              }catch(e){setPwErr("حدث خطأ في الاتصال");}
+              setSaving(false);
+            }} disabled={saving}>{saving?<span className="spin spin2"/>:"💾 تغيير كلمة المرور"}</button>
+          </div>
+        )}
+
+
         {notif&&<Notif n={notif} onClose={()=>setNotif(null)}/>}
       </div>
     </div>
@@ -1400,40 +1438,8 @@ function AuthScreen({onLogin}) {
             <button className="bp" onClick={async()=>{
               setErr("");setOk("");setLoad(true);
               if(!email.trim()){setErr("أدخل بريدك");setLoad(false);return;}
-              try{
-                // 1) Firebase يولّد الرابط ويتحقق أن البريد مسجل
-                await sendPasswordResetEmail(auth,email.trim());
-                // 2) Brevo يرسل بريد مخصص بالعربية
-                await fetch("https://api.brevo.com/v3/smtp/email",{
-                  method:"POST",
-                  headers:{
-                    "Content-Type":"application/json",
-                    "api-key":["xsmtpsib-a431b06b77a5aa3dbf90","d7fd3226a326eb5f1376fce484dc","1a6f641eab3a5f83-dMIIlL12adArkFmc"].join("")
-                  },
-                  body:JSON.stringify({
-                    sender:{name:"إدارة بطاقاتك",email:"aagwida@gmail.com"},
-                    to:[{email:email.trim()}],
-                    subject:"إعادة تعيين كلمة المرور - إدارة بطاقاتك",
-                    htmlContent:`<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:30px;background:#f9f9f9;border-radius:12px">
-                      <h2 style="color:#0a1628">إدارة بطاقاتك 🏦</h2>
-                      <p style="color:#333;font-size:15px">مرحباً،</p>
-                      <p style="color:#333;font-size:15px">تلقّينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك.</p>
-                      <p style="color:#333;font-size:15px">تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني من Firebase. إذا لم تجده، تحقق من مجلد <strong>Spam</strong>.</p>
-                      <p style="color:#888;font-size:12px;margin-top:24px">إذا لم تطلب إعادة تعيين كلمة المرور، تجاهل هذا البريد.</p>
-                      <hr style="border:none;border-top:1px solid #ddd;margin:20px 0"/>
-                      <p style="color:#aaa;font-size:11px;text-align:center">إدارة بطاقاتك &mdash; banking-app-pink-six.vercel.app</p>
-                    </div>`
-                  })
-                });
-                setOk("تم الإرسال ✉️ تحقق من بريدك");setReset(false);
-              }
-              catch(e){
-                if(e?.code==="auth/user-not-found"||e?.code==="auth/invalid-email"){
-                  setErr("البريد غير مسجل");
-                } else {
-                  setErr("حدث خطأ، حاول مجدداً");
-                }
-              }
+              try{await sendPasswordResetEmail(auth,email.trim());setOk("تم الإرسال ✉️");setReset(false);}
+              catch{setErr("البريد غير مسجل");}
               setLoad(false);
             }} disabled={load}>{load?<span className="spin spin2"/>:"📨 إرسال"}</button>
             <div className="alink"><button onClick={()=>{setReset(false);setErr("");}}>← العودة</button></div>
