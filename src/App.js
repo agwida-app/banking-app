@@ -1408,7 +1408,7 @@ function AuthScreen({onLogin}) {
                   method:"POST",
                   headers:{
                     "Content-Type":"application/json",
-                    "api-key":["xkeysib-a431b06b77a5aa3dbf90","d7fd3226a326eb5f1376fce484dc","1a6f641eab3a5f83-dMIIlL12adArkFmc"].join("")
+                    "api-key":["xsmtpsib-a431b06b77a5aa3dbf90","d7fd3226a326eb5f1376fce484dc","1a6f641eab3a5f83-dMIIlL12adArkFmc"].join("")
                   },
                   body:JSON.stringify({
                     sender:{name:"إدارة بطاقاتك",email:"aagwida@gmail.com"},
