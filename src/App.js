@@ -709,9 +709,6 @@ function AdminPanel({user, onBack}) {
   const [saving,setSaving]   = useState(false);
   const [notif,setNotif]     = useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
-  const [pwForm,setPwForm]   = useState({email:"",newPassword:""});
-  const [pwErr,setPwErr]     = useState("");
-  const [pwOk,setPwOk]       = useState("");
 
   useEffect(()=>{
     const q1=query(collection(db,"subscriptions"),orderBy("createdAt","desc"));
@@ -860,7 +857,6 @@ function AdminPanel({user, onBack}) {
         <div className="tabs" style={{marginBottom:16}}>
           <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
           <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
-          <button className={`tab${tab==="password"?" on":""}`} onClick={()=>setTab("password")}>🔑 كلمة المرور</button>
         </div>
 
         {tab==="subs"&&(
@@ -1162,40 +1158,6 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
-        {tab==="password"&&(
-          <div style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:14,padding:20,maxWidth:420}}>
-            <h3 style={{color:"var(--gold)",marginBottom:16,fontSize:15}}>🔑 تغيير كلمة مرور عميل</h3>
-            {pwErr&&<div className="me">{pwErr}</div>}
-            {pwOk&&<div className="ms">{pwOk}</div>}
-            <div className="fg">
-              <label className="fl">البريد الإلكتروني للعميل</label>
-              <input className="fi" type="email" placeholder="example@gmail.com" value={pwForm.email}
-                onChange={e=>setPwForm(f=>({...f,email:e.target.value}))} autoCapitalize="none" autoCorrect="off"/>
-            </div>
-            <div className="fg">
-              <label className="fl">كلمة المرور الجديدة</label>
-              <input className="fi" type="text" placeholder="كلمة مرور جديدة (6+ أحرف)" value={pwForm.newPassword}
-                onChange={e=>setPwForm(f=>({...f,newPassword:e.target.value}))}/>
-            </div>
-            <button className="bp" onClick={async()=>{
-              setPwErr("");setPwOk("");setSaving(true);
-              if(!pwForm.email.trim()||!pwForm.newPassword.trim()){setPwErr("جميع الحقول مطلوبة");setSaving(false);return;}
-              try{
-                const res=await fetch("/api/changePassword",{
-                  method:"POST",
-                  headers:{"Content-Type":"application/json"},
-                  body:JSON.stringify({adminToken:"AGWIDA_ADMIN_2024",email:pwForm.email.trim(),newPassword:pwForm.newPassword.trim()})
-                });
-                const data=await res.json();
-                if(data.success){setPwOk("تم تغيير كلمة المرور ✅");setPwForm({email:"",newPassword:""});}
-                else setPwErr(data.error||"حدث خطأ");
-              }catch(e){setPwErr("حدث خطأ في الاتصال");}
-              setSaving(false);
-            }} disabled={saving}>{saving?<span className="spin spin2"/>:"💾 تغيير كلمة المرور"}</button>
-          </div>
-        )}
-
-
         {notif&&<Notif n={notif} onClose={()=>setNotif(null)}/>}
       </div>
     </div>
@@ -1423,7 +1385,7 @@ function AuthScreen({onLogin}) {
                 autoComplete="current-password"/>
             </div>
             <button className="bp" onClick={handle} disabled={load}>{load?<span className="spin spin2"/>:(tab==="login"?"🔐 تسجيل الدخول":"✨ إنشاء حساب")}</button>
-            {tab==="login"{tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}{tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}
+            {tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}
             <div className="alink" style={{marginTop:8}}>للمساعدة تواصل عبر <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" style={{color:"#25D366",fontWeight:700,textDecoration:"none"}}>واتساب 📱</a></div>
           </>
         ):(
@@ -1693,11 +1655,8 @@ export default function App() {
             <span>{n.i}</span>{n.l}
           </button>
         ))}
-        {isAdmin{isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}{isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
-        <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer"
-          className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}>
-          <span>📱</span>تواصل مع خدمة العملاء
-        </a>
+        {isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
+        <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}><span>📱</span>تواصل مع خدمة العملاء</a>
         </nav>
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
