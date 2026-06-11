@@ -1423,7 +1423,8 @@ function AuthScreen({onLogin}) {
                 autoComplete="current-password"/>
             </div>
             <button className="bp" onClick={handle} disabled={load}>{load?<span className="spin spin2"/>:(tab==="login"?"🔐 تسجيل الدخول":"✨ إنشاء حساب")}</button>
-            {tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}
+            {tab==="login"{tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}{tab==="login"&&<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}<div className="alink">نسيت كلمة المرور؟ <button onClick={()=>{setReset(true);setErr("");}}>إعادة التعيين</button></div>}
+            <div className="alink" style={{marginTop:8}}>للمساعدة تواصل عبر <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" style={{color:"#25D366",fontWeight:700,textDecoration:"none"}}>واتساب 📱</a></div>
           </>
         ):(
           <>
@@ -1692,7 +1693,11 @@ export default function App() {
             <span>{n.i}</span>{n.l}
           </button>
         ))}
-        {isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
+        {isAdmin{isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}{isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
+        <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer"
+          className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}>
+          <span>📱</span>تواصل مع خدمة العملاء
+        </a>
         </nav>
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
