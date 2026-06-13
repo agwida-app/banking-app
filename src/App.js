@@ -370,7 +370,7 @@ function ActivationScreen({user, onActivated}) {
       const exp=data.expiresAt?.toDate?data.expiresAt.toDate():new Date(data.expiresAt);
       if(exp<new Date()){setErr("هذا الكود منتهي الصلاحية");setLoad(false);return;}
       const refTrimmed=refCode.trim().toUpperCase();
-      let bonusDays=0;
+      let hasBonus=false;
       if(refTrimmed){
         const affRef=doc(db,"affiliates",refTrimmed);
         const affSnap=await getDoc(affRef);
@@ -379,7 +379,7 @@ function ActivationScreen({user, onActivated}) {
         const usersRef=doc(db,"users",user.uid);
         const userSnap=await getDoc(usersRef);
         if(userSnap.exists()&&userSnap.data().usedReferral){setErr("لقد استخدمت كود إحالة مسبقاً");setLoad(false);return;}
-        bonusDays=7;
+        hasBonus=true;
         const plan=PLANS.find(p=>p.id===data.plan);
         const planPrice=plan?plan.price:null;
         const commPct=affData.commissionPct||COMMISSION_PCT;
@@ -398,11 +398,11 @@ function ActivationScreen({user, onActivated}) {
           referralCode:refTrimmed,referralUsedAt:serverTimestamp()
         },{merge:true});
       }
-      if(bonusDays>0){
+      if(hasBonus){
         const newExp=new Date(exp);
-        newExp.setDate(newExp.getDate()+bonusDays);
-        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,expiresAt:newExp,planLabel:(data.planLabel||"")+" + أسبوع مجاني 🎁"});
-        setOk("تم التفعيل! حصلت على 7 أيام مجانية إضافية 🎁");
+        newExp.setMonth(newExp.getMonth()+1);
+        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,expiresAt:newExp,planLabel:(data.planLabel||"")+" + شهر مجاني 🎁"});
+        setOk("تم التفعيل! حصلت على شهر مجاني إضافي 🎁");
       } else {
         await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email});
         setOk("تم التفعيل بنجاح! مرحباً بك 🎉");
@@ -425,7 +425,7 @@ function ActivationScreen({user, onActivated}) {
           <input className="code-input" placeholder="XXXXXXXX" value={code}
             onChange={e=>setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoCorrect="off"/>
           <div style={{marginTop:14}}>
-            <label className="fl">كود الإحالة <span style={{color:"var(--gray)",fontWeight:400}}>(اختياري — للحصول على أسبوع مجاني 🎁)</span></label>
+            <label className="fl">كود الإحالة <span style={{color:"var(--gray)",fontWeight:400}}>(اختياري — للحصول على شهر مجاني 🎁)</span></label>
             <input className="fi ltr" placeholder="مثال: MOHAMAD47" value={refCode}
               onChange={e=>setRefCode(e.target.value.toUpperCase())}
               style={{letterSpacing:2,textAlign:"center",fontSize:15}} autoCapitalize="characters" autoCorrect="off"/>
@@ -1319,7 +1319,7 @@ export default function App() {
   const pending=clients.filter(c=>!c.cardBooked&&!c.isSold).length;
   const sold=clients.filter(c=>c.isSold).length;
   const totalAmt=clients.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
-  const bankNames=[...new Set(clients.map(c=>c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType).filter(Boolean))];
+  const bankNames=[...new Set([...BANKS.filter(b=>b!=="مصرف آخر"),...clients.map(c=>c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType).filter(Boolean)])];
 
   if(!ready)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a1628"}}><style>{CSS}</style><span className="spin spin2" style={{width:36,height:36,borderWidth:3}}/></div>);
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
