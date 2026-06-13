@@ -14,47 +14,13 @@ const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
 const ADMIN_SECRET_TOKEN = "sk_live_agwida_2026";
 
 const Logo = ({size=40}) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width={size} height={size}>
-    <defs>
-      <linearGradient id="lbg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0a1628"/>
-        <stop offset="100%" stopColor="#162d52"/>
-      </linearGradient>
-      <linearGradient id="lc1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#1a3a6b"/>
-        <stop offset="100%" stopColor="#0f2040"/>
-      </linearGradient>
-      <linearGradient id="lc2" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#c9a84c"/>
-        <stop offset="100%" stopColor="#e8c96a"/>
-      </linearGradient>
-      <linearGradient id="lgold" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#c9a84c"/>
-        <stop offset="100%" stopColor="#f0d980"/>
-      </linearGradient>
-      <filter id="lsh"><feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="rgba(0,0,0,0.5)"/></filter>
-    </defs>
-    <circle cx="100" cy="100" r="96" fill="url(#lbg)" filter="url(#lsh)"/>
-    <circle cx="100" cy="100" r="96" fill="none" stroke="#c9a84c" strokeWidth="1.5" opacity="0.4"/>
-    <g transform="translate(100,105) rotate(-8) translate(-65,-41)">
-      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc1)" filter="url(#lsh)"/>
-      <rect x="14" y="22" width="22" height="17" rx="3" fill="#c9a84c" opacity="0.7"/>
-      <circle cx="88" cy="58" r="9" fill="#c9a84c" opacity="0.5"/>
-      <circle cx="104" cy="58" r="9" fill="#e8c96a" opacity="0.7"/>
-    </g>
-    <g transform="translate(100,100) rotate(5) translate(-65,-41)">
-      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc2)" filter="url(#lsh)"/>
-      <rect x="14" y="20" width="22" height="17" rx="3" fill="#0a1628" opacity="0.6"/>
-      <circle cx="20" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-      <circle cx="27" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-      <circle cx="34" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-      <circle cx="41" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-      <circle cx="54" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-      <circle cx="61" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
-    </g>
-    <text x="100" y="115" fontFamily="Georgia,serif" fontSize="62" fontWeight="bold"
-      textAnchor="middle" fill="url(#lgold)" opacity="0.95">G</text>
-  </svg>
+  <img
+    src="/logo192.png"
+    alt="إدارة بطاقاتك"
+    width={size}
+    height={size}
+    style={{borderRadius:"50%",objectFit:"cover"}}
+  />
 );
 
 const BANKS = [
