@@ -11,6 +11,7 @@ import {
 import { auth, db } from "./firebase";
 
 const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
+const ADMIN_SECRET_TOKEN = "sk_live_agwida_2026";
 
 const Logo = ({size=40}) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width={size} height={size}>
@@ -35,18 +36,14 @@ const Logo = ({size=40}) => (
     </defs>
     <circle cx="100" cy="100" r="96" fill="url(#lbg)" filter="url(#lsh)"/>
     <circle cx="100" cy="100" r="96" fill="none" stroke="#c9a84c" strokeWidth="1.5" opacity="0.4"/>
-    {/* Card 1 - back blue */}
     <g transform="translate(100,105) rotate(-8) translate(-65,-41)">
       <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc1)" filter="url(#lsh)"/>
-      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
       <rect x="14" y="22" width="22" height="17" rx="3" fill="#c9a84c" opacity="0.7"/>
       <circle cx="88" cy="58" r="9" fill="#c9a84c" opacity="0.5"/>
       <circle cx="104" cy="58" r="9" fill="#e8c96a" opacity="0.7"/>
     </g>
-    {/* Card 2 - front gold */}
     <g transform="translate(100,100) rotate(5) translate(-65,-41)">
       <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="url(#lc2)" filter="url(#lsh)"/>
-      <rect x="0" y="0" width="130" height="82" rx="10" ry="10" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
       <rect x="14" y="20" width="22" height="17" rx="3" fill="#0a1628" opacity="0.6"/>
       <circle cx="20" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
       <circle cx="27" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
@@ -55,15 +52,17 @@ const Logo = ({size=40}) => (
       <circle cx="54" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
       <circle cx="61" cy="52" r="2.5" fill="#0a1628" opacity="0.5"/>
     </g>
-    {/* Letter G */}
     <text x="100" y="115" fontFamily="Georgia,serif" fontSize="62" fontWeight="bold"
       textAnchor="middle" fill="url(#lgold)" opacity="0.95">G</text>
   </svg>
 );
 
 const BANKS = [
-  "التجاري الوطني","الجمهورية","الأمان","الوحدة",
-  "شمال أفريقيا","التجارة والتنمية","المتوسط","الاتحاد","أخرى"
+  "مصرف الجمهورية","مصرف الوحدة","المصرف التجاري الوطني",
+  "مصرف التجارة والتنمية","مصرف الصحارى","مصرف شمال أفريقيا",
+  "مصرف الأمان","مصرف اليقين","مصرف السراي","مصرف التضامن",
+  "مصرف الواحة","مصرف النوران","مصرف المتوسط","مصرف الاتحاد",
+  "مصرف الاندلس","مصرف آخر"
 ];
 
 const PLANS = [
@@ -72,7 +71,7 @@ const PLANS = [
   { id:"6m",  label:"6 أشهر",  months:6,  price:60  },
   { id:"12m", label:"12 شهر",  months:12, price:100 },
 ];
-const COMMISSION_PCT = 10; // نسبة العمولة الثابتة
+const COMMISSION_PCT = 10;
 
 const EMPTY = {
   name:"",bankType:"",bankTypeOther:"",phone1:"",phone2:"",nationalId:"",passportId:"",
@@ -81,7 +80,6 @@ const EMPTY = {
   pinCode:"",soldTo:"",isSold:false,notes:""
 };
 
-// ─── CSS ─────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -101,50 +99,32 @@ const CSS = `
 }
 html,body,#root{font-family:'Tajawal',sans-serif;direction:rtl;min-height:100%}
 body{background:var(--bg);color:var(--white);min-height:100vh;transition:background .25s,color .25s}
-
-.aw{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:linear-gradient(135deg,#050d1a,#0a1628,#0d1f3c)}
-.ac{background:rgba(15,32,64,.97);border:1px solid var(--border);border-radius:20px;
-  padding:36px 28px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.aw{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#050d1a,#0a1628,#0d1f3c)}
+.ac{background:rgba(15,32,64,.97);border:1px solid var(--border);border-radius:20px;padding:36px 28px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .al2{text-align:center;margin-bottom:24px}
 .li{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px;overflow:hidden}
 .al2 h1{font-size:17px;font-weight:900;color:#f8f6f0}
 .al2 p{font-size:11px;color:#8a9ab5;margin-top:2px}
 .tabs{display:flex;background:rgba(0,0,0,.25);border-radius:10px;padding:3px;margin-bottom:20px}
-.tab{flex:1;padding:9px;border:none;background:none;color:#8a9ab5;cursor:pointer;
-  border-radius:7px;font-family:'Tajawal',sans-serif;font-size:14px;transition:all .2s}
+.tab{flex:1;padding:9px;border:none;background:none;color:#8a9ab5;cursor:pointer;border-radius:7px;font-family:'Tajawal',sans-serif;font-size:14px;transition:all .2s}
 .tab.on{background:var(--gold);color:#0a1628;font-weight:700}
-.me{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;
-  padding:9px 12px;color:#ff8a80;font-size:13px;margin-bottom:12px}
-.ms{background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);border-radius:8px;
-  padding:9px 12px;color:#80ffb0;font-size:13px;margin-bottom:12px}
-.mw{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);border-radius:10px;
-  padding:9px 14px;color:#ffd080;font-size:13px;margin-bottom:16px}
+.me{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:9px 12px;color:#ff8a80;font-size:13px;margin-bottom:12px}
+.ms{background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);border-radius:8px;padding:9px 12px;color:#80ffb0;font-size:13px;margin-bottom:12px}
+.mw{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);border-radius:10px;padding:9px 14px;color:#ffd080;font-size:13px;margin-bottom:16px}
 .alink{text-align:center;margin-top:12px;font-size:12px;color:#8a9ab5}
-.alink button{background:none;border:none;color:var(--gold);cursor:pointer;
-  font-family:'Tajawal',sans-serif;font-size:12px;text-decoration:underline}
-
-.sub-expired{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);
-  border-radius:10px;padding:10px 14px;margin-bottom:16px;
-  display:flex;align-items:center;gap:10px;font-size:13px;color:#ff8a80}
-.sub-ok{background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);
-  border-radius:10px;padding:4px 12px;display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ok)}
-.readonly-badge{background:rgba(231,76,60,.1);color:#ff8a80;border:1px solid rgba(231,76,60,.3);
-  border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700}
-.limit-bar{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;
-  padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--gray2)}
+.alink button{background:none;border:none;color:var(--gold);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:12px;text-decoration:underline}
+.sub-expired{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;color:#ff8a80}
+.sub-ok{background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:10px;padding:4px 12px;display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ok)}
+.readonly-badge{background:rgba(231,76,60,.1);color:#ff8a80;border:1px solid rgba(231,76,60,.3);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700}
+.limit-bar{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--gray2)}
 .limit-progress{height:6px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:6px;overflow:hidden}
 .limit-fill{height:100%;background:linear-gradient(to left,var(--gold),var(--gold2));border-radius:3px;transition:width .3s}
 .limit-fill.danger{background:linear-gradient(to left,var(--err),#ff6b6b)}
-
 .act-box{background:rgba(201,168,76,.06);border:1px solid var(--border);border-radius:14px;padding:20px;margin-top:16px}
 .act-box h3{font-size:15px;font-weight:900;color:var(--gold);margin-bottom:8px}
 .act-box p{font-size:12px;color:var(--gray2);margin-bottom:14px;line-height:1.7}
-.code-input{width:100%;background:rgba(255,255,255,.08);border:2px solid var(--border);
-  border-radius:12px;padding:14px;color:var(--white);font-family:'IBM Plex Mono',monospace;
-  font-size:18px;outline:none;text-align:center;letter-spacing:4px;text-transform:uppercase}
+.code-input{width:100%;background:rgba(255,255,255,.08);border:2px solid var(--border);border-radius:12px;padding:14px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:18px;outline:none;text-align:center;letter-spacing:4px;text-transform:uppercase}
 .code-input:focus{border-color:var(--gold)}
-
 .admin-wrap{width:100%;max-width:700px;margin:0 auto;padding:20px}
 .sub-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;transition:border-color .2s}
 .sub-card:hover{border-color:rgba(201,168,76,.35)}
@@ -155,25 +135,17 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .chip-ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.25)}
 .chip-exp{background:rgba(231,76,60,.12);color:var(--err);border:1px solid rgba(231,76,60,.25)}
 .chip-free{background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.25)}
-/* Admin action buttons */
 .admin-action-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
-.ab-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;
-  color:var(--gray2);cursor:pointer;padding:6px 11px;font-size:12px;font-family:'Tajawal',sans-serif;
-  display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.ab-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--gray2);cursor:pointer;padding:6px 11px;font-size:12px;font-family:'Tajawal',sans-serif;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
 .ab-btn:hover{background:rgba(255,255,255,.1);color:var(--white)}
 .ab-btn.green{color:var(--ok);border-color:rgba(46,204,113,.2)}
 .ab-btn.gold{color:var(--gold);border-color:rgba(201,168,76,.3)}
 .ab-btn.red{color:var(--err);border-color:rgba(231,76,60,.2)}
-.plan-btn{flex:1;padding:10px 6px;border-radius:10px;cursor:pointer;border:1.5px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.05);color:var(--gray2);font-family:'Tajawal',sans-serif;
-  font-size:13px;font-weight:700;transition:all .15s;text-align:center}
+.plan-btn{flex:1;padding:10px 6px;border-radius:10px;cursor:pointer;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--gray2);font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;transition:all .15s;text-align:center}
 .plan-btn.on{border:2px solid var(--gold);background:rgba(201,168,76,.12);color:var(--gold)}
-
 .fg{margin-bottom:13px}
 .fl{font-size:12px;color:var(--gray2);margin-bottom:5px;display:block;font-weight:500}
-.fi{width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);
-  border-radius:10px;padding:11px 13px;color:var(--white);font-family:'Tajawal',sans-serif;
-  font-size:15px;outline:none;transition:border-color .15s;-webkit-appearance:none}
+.fi{width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 13px;color:var(--white);font-family:'Tajawal',sans-serif;font-size:15px;outline:none;transition:border-color .15s;-webkit-appearance:none}
 .fi:focus{border-color:var(--gold)}
 .fi.ltr{direction:ltr;font-family:'IBM Plex Mono',monospace}
 .fi::placeholder{color:var(--gray)}
@@ -181,42 +153,25 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .et{color:#ff8a80;font-size:11px;margin-top:2px;display:block}
 textarea.fi{resize:none}
 .light .fi{background:#fff;border-color:rgba(0,0,0,.18);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-
-.bp{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1628;
-  border:none;border-radius:10px;padding:13px;font-family:'Tajawal',sans-serif;
-  font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+.bp{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1628;border:none;border-radius:10px;padding:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
 .bp:disabled{opacity:.5}
-.bs{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;
-  padding:10px 20px;color:var(--gray2);font-family:'Tajawal',sans-serif;font-size:14px;cursor:pointer}
-.bsv{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;
-  padding:10px 26px;color:#0a1628;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.bs{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 20px;color:var(--gray2);font-family:'Tajawal',sans-serif;font-size:14px;cursor:pointer}
+.bsv{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;padding:10px 26px;color:#0a1628;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
 .bsv:disabled{opacity:.5}
-.add-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;
-  padding:10px 18px;color:#0a1628;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;
-  cursor:pointer;display:flex;align-items:center;gap:6px}
-.ib{background:none;border:1px solid rgba(255,255,255,.08);border-radius:7px;
-  color:var(--gray);cursor:pointer;padding:6px 9px;font-size:13px}
-.eb{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;
-  padding:8px 13px;color:var(--gold);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
-
+.add-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;padding:10px 18px;color:#0a1628;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.ib{background:none;border:1px solid rgba(255,255,255,.08);border-radius:7px;color:var(--gray);cursor:pointer;padding:6px 9px;font-size:13px}
+.eb{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 13px;color:var(--gold);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 .app{display:flex;min-height:100vh;background:var(--bg);transition:background .25s}
-.sidebar{width:225px;background:rgba(6,15,30,.99);border-left:1px solid var(--border);
-  display:flex;flex-direction:column;padding:18px 13px;position:fixed;right:0;top:0;bottom:0;
-  z-index:100;transition:transform .25s ease}
+.sidebar{width:225px;background:rgba(6,15,30,.99);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:18px 13px;position:fixed;right:0;top:0;bottom:0;z-index:100;transition:transform .25s ease}
 .light .sidebar{background:#ffffff;border-left:1px solid #d1dae8;box-shadow:2px 0 12px rgba(0,0,0,.08)}
 .sl{display:flex;align-items:center;gap:9px;padding:0 5px 18px;border-bottom:1px solid var(--border);margin-bottom:18px}
 .sl-i{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden}
 .sl-t h2{font-size:13px;font-weight:900;color:var(--white)}
 .sl-t p{font-size:10px;color:var(--gray)}
-.ni{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:9px;cursor:pointer;
-  color:var(--gray);font-size:13px;font-weight:500;margin-bottom:3px;border:none;background:none;
-  width:100%;text-align:right;font-family:'Tajawal',sans-serif}
+.ni{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:9px;cursor:pointer;color:var(--gray);font-size:13px;font-weight:500;margin-bottom:3px;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif}
 .ni.on{background:rgba(201,168,76,.12);color:var(--gold)}
-.su{border-top:1px solid var(--border);padding-top:13px;display:flex;align-items:center;
-  gap:7px;margin-top:auto;flex-wrap:wrap}
-.su-a{width:32px;height:32px;background:var(--navy3);border:1px solid var(--border);
-  border-radius:8px;display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0}
+.su{border-top:1px solid var(--border);padding-top:13px;display:flex;align-items:center;gap:7px;margin-top:auto;flex-wrap:wrap}
+.su-a{width:32px;height:32px;background:var(--navy3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0}
 .su-e{font-size:10px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .lb{background:none;border:none;color:var(--gray);cursor:pointer;font-size:15px;padding:3px;flex-shrink:0}
 .main{margin-right:225px;flex:1;padding:24px}
@@ -228,15 +183,11 @@ textarea.fi{resize:none}
   .hm{display:none!important}
   .stats{grid-template-columns:1fr 1fr!important}
 }
-.mh{display:none;position:fixed;top:0;left:0;right:0;background:rgba(6,15,30,.98);
-  border-bottom:1px solid var(--border);padding:11px 15px;align-items:center;
-  justify-content:space-between;z-index:200;backdrop-filter:blur(10px)}
+.mh{display:none;position:fixed;top:0;left:0;right:0;background:rgba(6,15,30,.98);border-bottom:1px solid var(--border);padding:11px 15px;align-items:center;justify-content:space-between;z-index:200;backdrop-filter:blur(10px)}
 .light .mh{background:rgba(255,255,255,.97);border-bottom:1px solid #d1dae8;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.mb{background:none;border:1px solid var(--border);border-radius:7px;color:var(--gold);
-  cursor:pointer;font-size:17px;padding:4px 9px}
+.mb{background:none;border:1px solid var(--border);border-radius:7px;color:var(--gold);cursor:pointer;font-size:17px;padding:4px 9px}
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99}
 .ov.open{display:block}
-
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:11px;margin-bottom:20px}
 .sc{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:15px;position:relative;overflow:hidden}
 .sc::before{content:'';position:absolute;top:0;right:0;width:55%;height:2px;background:linear-gradient(to left,var(--gold),transparent)}
@@ -244,7 +195,6 @@ textarea.fi{resize:none}
 .sv{font-size:21px;font-weight:900;color:var(--gold);line-height:1}
 .sl2{font-size:11px;color:var(--gray);margin-top:3px}
 .ss{font-size:10px;color:var(--gray2);margin-top:5px}
-
 .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:9px}
 .pt{font-size:19px;font-weight:900;color:var(--white)}
 .pt span{color:var(--gold)}
@@ -252,11 +202,9 @@ textarea.fi{resize:none}
 .sw{flex:1;min-width:160px;position:relative}
 .sw input{padding-right:38px!important}
 .si2{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--gray);pointer-events:none;font-size:15px}
-.fs{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;
-  padding:10px 12px;color:var(--white);font-family:'Tajawal',sans-serif;font-size:13px;outline:none;cursor:pointer;-webkit-appearance:none}
+.fs{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;color:var(--white);font-family:'Tajawal',sans-serif;font-size:13px;outline:none;cursor:pointer;-webkit-appearance:none}
 .fs option{background:var(--navy2)}
 .light .fs{background:#fff;border-color:rgba(0,0,0,.18);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-
 .tw{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow-x:auto}
 .tw table{width:100%;border-collapse:collapse}
 .tw th{background:rgba(201,168,76,.05);padding:11px 13px;text-align:right;font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap}
@@ -274,11 +222,9 @@ textarea.fi{resize:none}
 .emp{text-align:center;padding:45px 20px}
 .ei{font-size:40px;margin-bottom:10px;opacity:.3}
 .et2{font-size:13px;color:var(--gray)}
-
 .dov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:769px){.dov{align-items:center}.drawer{border-radius:18px!important;max-height:85vh!important;margin:20px}}
-.drawer{background:var(--navy2);border:1px solid var(--border);border-radius:18px 18px 0 0;
-  width:100%;max-width:580px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.drawer{background:var(--navy2);border:1px solid var(--border);border-radius:18px 18px 0 0;width:100%;max-width:580px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
 .light .drawer{background:#fff}
 .dhead{padding:16px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
 .dt{font-size:16px;font-weight:900;color:var(--white)}
@@ -292,7 +238,6 @@ textarea.fi{resize:none}
 .light .tw td.nm{color:#111827}
 .light .sc{background:#fff;border-color:#d1dae8;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .light .sub-card{background:#fff;border-color:#d1dae8;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.light .log{background:#fff;border-color:#d1dae8}
 .light .ni{color:#374151}
 .light .ni.on{background:rgba(154,111,0,.1);color:var(--gold)}
 .light .bs{background:#f0f4fa;border-color:#d1dae8;color:#111827}
@@ -309,56 +254,38 @@ textarea.fi{resize:none}
 .chk{display:flex;align-items:center;gap:8px;padding:3px 0}
 .chk input{width:18px;height:18px;accent-color:var(--gold);cursor:pointer;flex-shrink:0}
 .chk label{font-size:14px;color:var(--gray2);cursor:pointer}
-
-.logs{display:flex;flex-direction:column;gap:7px}
-.log{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px 13px;display:flex;align-items:center;gap:11px}
-.ld{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0}
-.lt{flex:1;font-size:12px;color:var(--gray2)}
-.lt strong{color:var(--white)}
-.ldt{font-size:10px;color:var(--gray);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
-
-.notif{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy2);
-  border:1px solid var(--border);border-radius:12px;padding:11px 18px;font-size:13px;
-  color:var(--white);z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.5);
-  display:flex;align-items:center;gap:8px;white-space:nowrap}
+.notif{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:11px 18px;font-size:13px;color:var(--white);z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;white-space:nowrap}
 .notif.ok{border-color:rgba(46,204,113,.4)}
 .notif.err{border-color:rgba(231,76,60,.4)}
-
 .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.15);border-top-color:#0a1628;border-radius:50%;animation:sp .6s linear infinite}
 .spin2{border-top-color:var(--gold);border-color:rgba(255,255,255,.15)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .syn{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ok);background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:20px;padding:2px 9px}
-
 @media print{body{background:#fff!important;color:#000!important}}
 `;
 
-// ─── HELPERS ──────────────────────────────────────────────────
 function fmt(ts) {
   if (!ts) return "—";
   try { const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString("ar-LY"); }
   catch { return "—"; }
 }
-
 function daysLeft(expiresAt) {
   if (!expiresAt) return null;
   const exp = expiresAt.toDate ? expiresAt.toDate() : new Date(expiresAt);
   return Math.ceil((exp - new Date()) / (1000*60*60*24));
 }
-
 function addMonths(months) {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
   return d;
 }
 
-// ─── PDF GENERATOR ────────────────────────────────────────────
 function generatePDF(clients, single = null) {
   const list = single ? [single] : clients;
   const date = new Date().toLocaleDateString("ar-LY");
   const title = single ? `بيانات العميل: ${single.name}` : "تقرير قائمة العملاء";
-
   const rows = list.map((c,i) => {
-    const bank = c.bankType==="أخرى" ? (c.bankTypeOther||"أخرى") : c.bankType;
+    const bank = c.bankType==="مصرف آخر" ? (c.bankTypeOther||"مصرف آخر") : c.bankType;
     const status = c.isSold ? "مباع" : c.cardBooked ? "تم الحجز" : "لم يتم";
     const sc = c.isSold ? "#c0392b" : c.cardBooked ? "#166534" : "#92400e";
     const sb = c.isSold ? "#fef2f2" : c.cardBooked ? "#f0fdf4" : "#fffbeb";
@@ -376,172 +303,44 @@ function generatePDF(clients, single = null) {
       <td style="font-size:10px;color:#374151">${c.purchasedBy||"—"}</td>
     </tr>`;
   }).join("");
-
-  const detailSection = single ? `
-    <div style="margin-top:20px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
-      <div style="background:#1e3a5f;color:#f0c040;padding:10px 16px;font-size:13px;font-weight:700">📋 البيانات التفصيلية</div>
-      <table style="width:100%;border-collapse:collapse">
-        ${[
-          ["الاسم الكامل",single.name],
-          ["المصرف",single.bankType==="أخرى"?(single.bankTypeOther||"أخرى"):single.bankType],
-          ["الهاتف 1",single.phone1],["الهاتف 2",single.phone2||"—"],
-          ["الرقم الوطني",single.nationalId],["جواز السفر",single.passportId||"—"],["رقم الحساب",single.accountNumber||"—"],
-          ["رقم IBAN",single.iban||"—"],
-          ["المبلغ المدفوع",single.amount?parseFloat(single.amount).toLocaleString()+" "+single.currency:"—"],
-          ["تم الشراء من طرف",single.purchasedBy||"—"],["نوع الحجز",single.paymentType||"—"],
-          ["حالة البطاقة",single.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
-          ["تاريخ الحجز",single.bookingDate||"—"],["الرقم السري",single.pinCode||"—"],
-          ["حالة البيع",single.isSold?"🔴 تم البيع":"🟢 لم يُباع"],
-          ["بيعت إلى",single.soldTo||"—"],["ملاحظات",single.notes||"—"],
-          ["تاريخ الإضافة",fmt(single.createdAt)],["أضيف بواسطة",single.createdBy||"—"],
-        ].map(([l,v],i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"}">
-          <td style="padding:8px 14px;font-size:12px;color:#6b7280;font-weight:600;width:160px;border-bottom:1px solid #f3f4f6">${l}</td>
-          <td style="padding:8px 14px;font-size:12px;color:#111827;border-bottom:1px solid #f3f4f6">${v}</td>
-        </tr>`).join("")}
-      </table>
-    </div>` : "";
-
-  const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>${title}</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet"/>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#fff;color:#111827;font-size:12px}
-  .wrap{padding:20px;max-width:1100px;margin:0 auto}
-  .no-print{margin-bottom:14px;display:flex;gap:8px}
-  .btn{border:none;border-radius:8px;padding:9px 18px;font-family:'Tajawal',sans-serif;
-    font-size:13px;font-weight:700;cursor:pointer}
-  .hdr{background:linear-gradient(135deg,#1e3a5f,#0f2040);border-radius:10px;
-    padding:16px 22px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
-  .hdr h1{font-size:17px;font-weight:900;color:#f0c040;margin-bottom:3px}
-  .hdr p{font-size:11px;color:#93a3b8}
-  .tw{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:18px;
-    box-shadow:0 1px 6px rgba(0,0,0,.06)}
-  table{width:100%;border-collapse:collapse}
-  thead tr{background:linear-gradient(135deg,#1e3a5f,#0f2040)}
-  th{padding:10px 9px;text-align:right;font-size:11px;font-weight:700;color:#f0c040;white-space:nowrap}
-  td{padding:9px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#374151;vertical-align:middle}
-  tr:nth-child(even) td{background:#fafafa}
-  tr:last-child td{border-bottom:none}
-  .ft{display:flex;justify-content:space-between;border-top:2px solid #f0c040;
-    padding-top:10px;font-size:10px;color:#9ca3af;margin-top:4px}
-  @media print{
-    @page{size:A4 landscape;margin:10mm}
-    .no-print{display:none!important}
-    body{font-size:10px}
-    .wrap{padding:0;max-width:100%}
-    .hdr{padding:10px 14px;border-radius:6px}
-    .hdr h1{font-size:14px}
-    th{padding:7px 6px;font-size:9px}
-    td{padding:6px;font-size:10px}
-    tr{page-break-inside:avoid}
-    thead{display:table-header-group}
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="no-print">
-    <button class="btn" style="background:#1e3a5f;color:#f0c040" onclick="window.close()">← رجوع</button>
-    <button class="btn" style="background:#166534;color:#fff" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
-  </div>
-
-  <div class="hdr">
-    <div>
-      <h1>💳 ${title}</h1>
-      <p>تاريخ التقرير: ${date} &nbsp;·&nbsp; إجمالي: ${list.length} عميل</p>
-    </div>
-    <div style="font-size:30px;opacity:.5">💳</div>
-  </div>
-
-  <div class="tw">
-    <table>
-      <thead><tr>
-        <th style="width:28px">#</th>
-        <th>الاسم</th>
-        <th>المصرف</th>
-        <th>الهاتف</th>
-        <th>الرقم الوطني</th>
-        <th>المبلغ</th>
-        <th>نوع الحجز</th>
-        <th>الحالة</th>
-        <th>الرقم السري</th>
-        <th>بيعت إلى</th>
-        <th>اشترى من طرف</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>
-
-  ${detailSection}
-
-  <div class="ft">
-    <span>تطبيق إدارة بطاقاتك</span>
-    <span>${date}</span>
-  </div>
-</div>
-</body></html>`;
-
+  const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"/><title>${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#fff;color:#111827;font-size:12px}.wrap{padding:20px;max-width:1100px;margin:0 auto}.no-print{margin-bottom:14px;display:flex;gap:8px}.btn{border:none;border-radius:8px;padding:9px 18px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}.hdr{background:linear-gradient(135deg,#1e3a5f,#0f2040);border-radius:10px;padding:16px 22px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}.hdr h1{font-size:17px;font-weight:900;color:#f0c040;margin-bottom:3px}.hdr p{font-size:11px;color:#93a3b8}.tw{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:18px}table{width:100%;border-collapse:collapse}thead tr{background:linear-gradient(135deg,#1e3a5f,#0f2040)}th{padding:10px 9px;text-align:right;font-size:11px;font-weight:700;color:#f0c040;white-space:nowrap}td{padding:9px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#374151;vertical-align:middle}tr:nth-child(even) td{background:#fafafa}.ft{display:flex;justify-content:space-between;border-top:2px solid #f0c040;padding-top:10px;font-size:10px;color:#9ca3af;margin-top:4px}@media print{@page{size:A4 landscape;margin:10mm}.no-print{display:none!important}}</style></head>
+<body><div class="wrap">
+<div class="no-print"><button class="btn" style="background:#1e3a5f;color:#f0c040" onclick="window.close()">← رجوع</button><button class="btn" style="background:#166534;color:#fff" onclick="window.print()">🖨️ طباعة / حفظ PDF</button></div>
+<div class="hdr"><div><h1>💳 ${title}</h1><p>تاريخ التقرير: ${date} · إجمالي: ${list.length} عميل</p></div></div>
+<div class="tw"><table><thead><tr><th>#</th><th>الاسم</th><th>المصرف</th><th>الهاتف</th><th>الرقم الوطني</th><th>المبلغ</th><th>نوع الحجز</th><th>الحالة</th><th>الرقم السري</th><th>بيعت إلى</th><th>اشترى من طرف</th></tr></thead><tbody>${rows}</tbody></table></div>
+<div class="ft"><span>تطبيق إدارة بطاقاتك</span><span>${date}</span></div></div></body></html>`;
   const win = window.open("","_blank");
   if (!win) { alert("يرجى السماح بفتح النوافذ المنبثقة في المتصفح"); return; }
-  win.document.write(html);
-  win.document.close();
-}
-
-// ─── BACKUP ───────────────────────────────────────────────────
-function downloadBackup(clients, email) {
-  const data = {
-    exportDate: new Date().toISOString(), exportedBy: email,
-    totalClients: clients.length,
-    clients: clients.map(c=>({...c,createdAt:fmt(c.createdAt),updatedAt:fmt(c.updatedAt)}))
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`backup_${email}_${Date.now()}.json`;
-  a.click();
+  win.document.write(html); win.document.close();
 }
 
 function exportCSV(clients) {
-  // Columns ordered right-to-left for Arabic apps
   const cols = [
-    ["الاسم",            c=>c.name||""],
-    ["المصرف",           c=>c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType||""],
-    ["الهاتف 1",         c=>c.phone1||""],
-    ["الهاتف 2",         c=>c.phone2||""],
-    ["الرقم الوطني",     c=>c.nationalId||""],
-    ["جواز السفر",       c=>c.passportId||""],
-    ["رقم الحساب",       c=>c.accountNumber||""],
-    ["IBAN",             c=>c.iban||""],
-    ["المبلغ",           c=>c.amount||""],
-    ["العملة",           c=>c.currency||"د.ل"],
-    ["نوع الحجز",        c=>c.paymentType||""],
-    ["حالة البطاقة",     c=>c.cardBooked?"تم الحجز":"لم يتم"],
-    ["تاريخ الحجز",      c=>c.bookingDate||""],
-    ["الرقم السري",      c=>c.pinCode||""],
-    ["تم البيع",         c=>c.isSold?"نعم":"لا"],
-    ["بيعت إلى",         c=>c.soldTo||""],
-    ["اشترى من طرف",     c=>c.purchasedBy||""],
-    ["ملاحظات",          c=>c.notes||""],
+    ["الاسم",c=>c.name||""],
+    ["المصرف",c=>c.bankType==="مصرف آخر"?(c.bankTypeOther||"مصرف آخر"):c.bankType||""],
+    ["الهاتف 1",c=>c.phone1||""],["الهاتف 2",c=>c.phone2||""],
+    ["الرقم الوطني",c=>c.nationalId||""],["جواز السفر",c=>c.passportId||""],
+    ["رقم الحساب",c=>c.accountNumber||""],["IBAN",c=>c.iban||""],
+    ["المبلغ",c=>c.amount||""],["العملة",c=>c.currency||"د.ل"],
+    ["نوع الحجز",c=>c.paymentType||""],["حالة البطاقة",c=>c.cardBooked?"تم الحجز":"لم يتم"],
+    ["تاريخ الحجز",c=>c.bookingDate||""],["الرقم السري",c=>c.pinCode||""],
+    ["تم البيع",c=>c.isSold?"نعم":"لا"],["بيعت إلى",c=>c.soldTo||""],
+    ["اشترى من طرف",c=>c.purchasedBy||""],["ملاحظات",c=>c.notes||""],
   ];
-  const H = cols.map(([h])=>h);
-  const R = clients.map(c=>cols.map(([,fn])=>fn(c)));
-  const esc = v=>`"${String(v).replace(/"/g,'""')}"`;
-  const csv = [H,...R].map(r=>r.map(esc).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  if(navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)){
+  const H=cols.map(([h])=>h);
+  const R=clients.map(c=>cols.map(([,fn])=>fn(c)));
+  const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv=[H,...R].map(r=>r.map(esc).join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
     const file=new File([blob],`clients_${Date.now()}.csv`,{type:"text/csv;charset=utf-8;"});
     navigator.share({files:[file],title:"قائمة العملاء"}).catch(()=>{
-      const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-      a.download=`clients_${Date.now()}.csv`;a.click();
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`clients_${Date.now()}.csv`;a.click();
     });
   } else {
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-    a.download=`clients_${Date.now()}.csv`;a.click();
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`clients_${Date.now()}.csv`;a.click();
   }
 }
 
@@ -552,11 +351,11 @@ function Notif({n,onClose}) {
 
 // ─── ACTIVATION ───────────────────────────────────────────────
 function ActivationScreen({user, onActivated}) {
-  const [code,setCode]         = useState("");
-  const [refCode,setRefCode]   = useState("");
-  const [err,setErr]           = useState("");
-  const [ok,setOk]             = useState("");
-  const [load,setLoad]         = useState(false);
+  const [code,setCode]=useState("");
+  const [refCode,setRefCode]=useState("");
+  const [err,setErr]=useState("");
+  const [ok,setOk]=useState("");
+  const [load,setLoad]=useState(false);
 
   const activate=async()=>{
     setErr("");setOk("");setLoad(true);
@@ -570,8 +369,6 @@ function ActivationScreen({user, onActivated}) {
       if(data.usedBy&&data.usedBy!==user.uid){setErr("هذا الكود مستخدم مسبقاً");setLoad(false);return;}
       const exp=data.expiresAt?.toDate?data.expiresAt.toDate():new Date(data.expiresAt);
       if(exp<new Date()){setErr("هذا الكود منتهي الصلاحية");setLoad(false);return;}
-
-      // Validate referral code (optional)
       const refTrimmed=refCode.trim().toUpperCase();
       let bonusDays=0;
       if(refTrimmed){
@@ -581,90 +378,36 @@ function ActivationScreen({user, onActivated}) {
         const affData=affSnap.data();
         const usersRef=doc(db,"users",user.uid);
         const userSnap=await getDoc(usersRef);
-        if(userSnap.exists()&&userSnap.data().usedReferral){
-          setErr("لقد استخدمت كود إحالة مسبقاً");setLoad(false);return;
-        }
+        if(userSnap.exists()&&userSnap.data().usedReferral){setErr("لقد استخدمت كود إحالة مسبقاً");setLoad(false);return;}
         bonusDays=7;
-
-        // Auto calculate commission from subscription plan price
         const plan=PLANS.find(p=>p.id===data.plan);
         const planPrice=plan?plan.price:null;
         const commPct=affData.commissionPct||COMMISSION_PCT;
         const commAmount=planPrice?Math.round(planPrice*commPct/100*100)/100:null;
-
-        // Update affiliate stats
-        await updateDoc(affRef,{
-          totalReferrals:(affData.totalReferrals||0)+1,
-        });
-
-        // Auto-add commission entry to payments subcollection
+        await updateDoc(affRef,{totalReferrals:(affData.totalReferrals||0)+1});
         if(commAmount){
           await addDoc(collection(db,`affiliates/${affSnap.id}/payments`),{
-            amount:commAmount,
-            note:`عمولة تلقائية — ${user.email} (${plan?.label||data.plan}) $${planPrice}`,
-            date:new Date().toISOString().split("T")[0],
-            paidBy:"تلقائي",
-            isAuto:true,
-            subscriptionCode:trimmed,
-            createdAt:serverTimestamp()
+            amount:commAmount,note:`عمولة تلقائية — ${user.email}`,
+            date:new Date().toISOString().split("T")[0],paidBy:"تلقائي",
+            isAuto:true,subscriptionCode:trimmed,createdAt:serverTimestamp()
           });
-          // Update totalPaid
-          await updateDoc(affRef,{
-            totalPaid:(affData.totalPaid||0)+commAmount
-          });
+          await updateDoc(affRef,{totalPaid:(affData.totalPaid||0)+commAmount});
         }
-
-        // Save user's referral usage
         await setDoc(doc(db,"users",user.uid),{
-          uid:user.uid,email:user.email,
-          usedReferral:true,referralCode:refTrimmed,
-          referralUsedAt:serverTimestamp()
+          uid:user.uid,email:user.email,usedReferral:true,
+          referralCode:refTrimmed,referralUsedAt:serverTimestamp()
         },{merge:true});
       }
-
-      // Also handle subscription's built-in affiliateCode
-      if(!refTrimmed&&data.affiliateCode){
-        const builtInAffRef=doc(db,"affiliates",data.affiliateCode);
-        const builtInAffSnap=await getDoc(builtInAffRef);
-        if(builtInAffSnap.exists()){
-          const builtInAff=builtInAffSnap.data();
-          const plan=PLANS.find(p=>p.id===data.plan);
-          const planPrice=plan?plan.price:null;
-          const commPct=builtInAff.commissionPct||COMMISSION_PCT;
-          const commAmount=planPrice?Math.round(planPrice*commPct/100*100)/100:null;
-          if(commAmount){
-            await addDoc(collection(db,`affiliates/${builtInAffSnap.id}/payments`),{
-              amount:commAmount,
-              note:`عمولة تلقائية — ${user.email} (${plan?.label||data.plan}) $${planPrice}`,
-              date:new Date().toISOString().split("T")[0],
-              paidBy:"تلقائي",
-              isAuto:true,
-              subscriptionCode:trimmed,
-              createdAt:serverTimestamp()
-            });
-            await updateDoc(builtInAffRef,{
-              totalReferrals:(builtInAff.totalReferrals||0)+1,
-              totalPaid:(builtInAff.totalPaid||0)+commAmount
-            });
-          }
-        }
-      }
-
-      // Activate subscription
       if(bonusDays>0){
         const newExp=new Date(exp);
         newExp.setDate(newExp.getDate()+bonusDays);
-        await updateDoc(ref,{
-          usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,
-          expiresAt:newExp,
-          planLabel:(data.planLabel||"")+" + أسبوع مجاني 🎁"
-        });
+        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,expiresAt:newExp,planLabel:(data.planLabel||"")+" + أسبوع مجاني 🎁"});
         setOk("تم التفعيل! حصلت على 7 أيام مجانية إضافية 🎁");
       } else {
         await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email});
+        setOk("تم التفعيل بنجاح! مرحباً بك 🎉");
       }
-
-      setTimeout(()=>onActivated(), 1500);
+      setTimeout(()=>onActivated(),1500);
     }catch(e){setErr("حدث خطأ: "+e.message);}
     setLoad(false);
   };
@@ -678,10 +421,9 @@ function ActivationScreen({user, onActivated}) {
           <p>احصل على الكود من المسؤول وأدخله أدناه لتفعيل اشتراكك.</p>
           {err&&<div className="me">{err}</div>}
           {ok&&<div className="ms">{ok}</div>}
-          <label className="fl" style={{marginBottom:6}}>كود التفعيل *</label>
+          <label className="fl">كود التفعيل *</label>
           <input className="code-input" placeholder="XXXXXXXX" value={code}
-            onChange={e=>setCode(e.target.value.toUpperCase())}
-            onKeyDown={e=>e.key==="Enter"&&activate()} autoCapitalize="characters" autoCorrect="off"/>
+            onChange={e=>setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoCorrect="off"/>
           <div style={{marginTop:14}}>
             <label className="fl">كود الإحالة <span style={{color:"var(--gray)",fontWeight:400}}>(اختياري — للحصول على أسبوع مجاني 🎁)</span></label>
             <input className="fi ltr" placeholder="مثال: MOHAMAD47" value={refCode}
@@ -700,15 +442,52 @@ function ActivationScreen({user, onActivated}) {
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────
 function AdminPanel({user, onBack}) {
-  const [subs,setSubs]       = useState([]);
-  const [affiliates,setAff]  = useState([]);
-  const [tab,setTab]         = useState("subs");
-  const [modal,setModal]     = useState(null);
-  const [form,setForm]       = useState({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
-  const [affForm,setAffForm] = useState({name:"",handle:"",code:"",commissionPct:10,notes:""});
-  const [saving,setSaving]   = useState(false);
-  const [notif,setNotif]     = useState(null);
+  const [subs,setSubs]=useState([]);
+  const [affiliates,setAff]=useState([]);
+  const [tab,setTab]=useState("subs");
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
+  const [affForm,setAffForm]=useState({name:"",handle:"",code:"",commissionPct:10,notes:""});
+  const [saving,setSaving]=useState(false);
+  const [notif,setNotif]=useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
+
+  // ─── تغيير كلمة مرور العميل ───
+  const [pwModal,setPwModal]=useState(false);
+  const [pwEmail,setPwEmail]=useState("");
+  const [pwNew,setPwNew]=useState("");
+  const [pwLoad,setPwLoad]=useState(false);
+  const [pwErr,setPwErr]=useState("");
+  const [pwOk,setPwOk]=useState("");
+  const [showPw,setShowPw]=useState(false);
+
+  const changeClientPassword=async()=>{
+    setPwErr("");setPwOk("");
+    if(!pwEmail.trim()){setPwErr("أدخل البريد الإلكتروني");return;}
+    if(!pwNew.trim()||pwNew.length<6){setPwErr("كلمة المرور قصيرة (6+ أحرف)");return;}
+    setPwLoad(true);
+    try{
+      const res=await fetch("/api/changePassword",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          adminToken:ADMIN_SECRET_TOKEN,
+          email:pwEmail.trim(),
+          newPassword:pwNew
+        })
+      });
+      const data=await res.json();
+      if(data.success){
+        setPwOk("✅ تم تغيير كلمة المرور بنجاح");
+        navigator.clipboard.writeText(`البريد: ${pwEmail.trim()}\nكلمة المرور الجديدة: ${pwNew}`);
+        notify("تم التغيير — تم نسخ البيانات للحافظة 📋");
+        setTimeout(()=>{setPwModal(false);setPwEmail("");setPwNew("");setPwOk("");},2500);
+      }else{
+        setPwErr(data.error||"حدث خطأ غير متوقع");
+      }
+    }catch(e){setPwErr("خطأ في الاتصال بالخادم");}
+    setPwLoad(false);
+  };
 
   useEffect(()=>{
     const q1=query(collection(db,"subscriptions"),orderBy("createdAt","desc"));
@@ -721,11 +500,6 @@ function AdminPanel({user, onBack}) {
   const genCode=()=>{
     const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
-  };
-
-  const genAffCode=(name)=>{
-    const clean=name.replace(/\s+/g,"").toUpperCase().slice(0,6);
-    return `${clean}${Math.floor(Math.random()*90)+10}`;
   };
 
   const createSub=async()=>{
@@ -750,14 +524,6 @@ function AdminPanel({user, onBack}) {
         affiliateCode:form.affiliateCode.trim().toUpperCase()||null,
         createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,devices:{}
       });
-      if(form.affiliateCode.trim()){
-        const affRef=doc(db,"affiliates",form.affiliateCode.trim().toUpperCase());
-        const affSnap=await getDoc(affRef);
-        if(affSnap.exists())await updateDoc(affRef,{
-          totalReferrals:(affSnap.data().totalReferrals||0)+1,
-          pendingReferrals:(affSnap.data().pendingReferrals||0)+1
-        });
-      }
       notify("تم إنشاء الكود ✅");
       setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
@@ -770,9 +536,8 @@ function AdminPanel({user, onBack}) {
     setSaving(true);
     try{
       const code=affForm.code.trim().toUpperCase();
-      // Check if code already exists
       const existing=await getDoc(doc(db,"affiliates",code));
-      if(existing.exists()){notify("هذا الكود مستخدم مسبقاً، اختر كوداً آخر","err");setSaving(false);return;}
+      if(existing.exists()){notify("هذا الكود مستخدم مسبقاً","err");setSaving(false);return;}
       await setDoc(doc(db,"affiliates",code),{
         code,name:affForm.name,handle:affForm.handle,
         commissionPct:parseInt(affForm.commissionPct)||10,
@@ -785,18 +550,16 @@ function AdminPanel({user, onBack}) {
     setSaving(false);
   };
 
-  const [payModal,setPayModal]   = useState(null);
-  const [payForm,setPayForm]     = useState({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
-  const [payments,setPayments]   = useState({});
-  const [selAff,setSelAff]       = useState(null);
+  const [payModal,setPayModal]=useState(null);
+  const [payForm,setPayForm]=useState({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
+  const [payments,setPayments]=useState({});
+  const [selAff,setSelAff]=useState(null);
 
   useEffect(()=>{
     if(!affiliates.length)return;
     const unsubs=affiliates.map(a=>{
       const q=query(collection(db,`affiliates/${a.id}/payments`),orderBy("createdAt","desc"));
-      return onSnapshot(q,snap=>{
-        setPayments(p=>({...p,[a.id]:snap.docs.map(d=>({id:d.id,...d.data()}))}));
-      });
+      return onSnapshot(q,snap=>{setPayments(p=>({...p,[a.id]:snap.docs.map(d=>({id:d.id,...d.data()}))}));});
     });
     return()=>unsubs.forEach(u=>u());
   },[affiliates]);
@@ -809,16 +572,12 @@ function AdminPanel({user, onBack}) {
       const affPays=payments[aff.id]||[];
       const newTotal=affPays.reduce((s,p)=>s+(p.amount||0),0)+parseFloat(payForm.amount);
       await addDoc(collection(db,`affiliates/${aff.id}/payments`),{
-        amount:parseFloat(payForm.amount),
-        note:payForm.note||"",
-        date:payForm.date,
-        paidBy:user.email,
-        createdAt:serverTimestamp()
+        amount:parseFloat(payForm.amount),note:payForm.note||"",
+        date:payForm.date,paidBy:user.email,createdAt:serverTimestamp()
       });
       await updateDoc(doc(db,"affiliates",aff.id),{totalPaid:newTotal});
       notify("تم تسجيل الدفعة ✅");
-      setPayModal(null);
-      setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
+      setPayModal(null);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
@@ -848,9 +607,10 @@ function AdminPanel({user, onBack}) {
       <div className="admin-wrap">
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
           <h1 style={{fontSize:20,fontWeight:900,color:"var(--gold)"}}>🛡️ لوحة المدير</h1>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {tab==="subs"&&<button className="bsv" onClick={()=>{setForm(f=>({...f,code:genCode()}));setModal("sub");}}>＋ كود جديد</button>}
             {tab==="affiliates"&&<button className="bsv" onClick={()=>setModal("aff")}>＋ مسوّق جديد</button>}
+            <button className="ab-btn gold" onClick={()=>{setPwModal(true);setPwErr("");setPwOk("");setPwEmail("");setPwNew("");}}>🔑 تغيير كلمة مرور عميل</button>
             <button className="bs" onClick={onBack}>← رجوع</button>
           </div>
         </div>
@@ -889,14 +649,13 @@ function AdminPanel({user, onBack}) {
                       {isExpired&&<span className="status-chip chip-exp">❌ منتهي</span>}
                     </div>
                   </div>
-                  {/* Action buttons row */}
                   <div className="admin-action-row">
-                    <button className="ab-btn gold" title="نسخ رسالة الترحيب" onClick={()=>{
+                    <button className="ab-btn gold" onClick={()=>{
                       const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
                       navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
                     }}>✉️ رسالة</button>
-                    <button className="ab-btn" title="تجديد الباقة" onClick={()=>renewSub(s)}>🔄 تجديد</button>
-                    <button className="ab-btn" title="تعديل عدد العملاء" onClick={async()=>{
+                    <button className="ab-btn" onClick={()=>renewSub(s)}>🔄 تجديد</button>
+                    <button className="ab-btn" onClick={async()=>{
                       const newMax=prompt("أدخل الحد الجديد للعملاء (الحد الأدنى 500):",s.maxClients||500);
                       if(!newMax)return;
                       const val=parseInt(newMax);
@@ -904,26 +663,20 @@ function AdminPanel({user, onBack}) {
                       await updateDoc(doc(db,"subscriptions",s.id),{maxClients:val});
                       notify(`تم تحديث الحد إلى ${val} عميل ✅`);
                     }}>👥 {s.maxClients||"∞"} عميل</button>
-                    <button className="ab-btn" title="الأجهزة المسجّلة" onClick={async()=>{
-                      const devs = Object.values(s.devices||{});
-                      const devList = devs.length
-                        ? devs.map((d,i)=>{
-                            const date = d.lastSeen ? new Date(d.lastSeen).toLocaleDateString("ar-LY") : "—";
-                            return `${i+1}. ${d.type||"جهاز غير معروف"}  ·  ${date}`;
-                          }).join("\n")
-                        : "لا يوجد أجهزة مسجّلة";
-                      if(!window.confirm(`📱 الأجهزة المسجّلة (${devs.length}/7)\n${"─".repeat(30)}\n${devList}\n${"─".repeat(30)}\nهل تريد إعادة ضبط جميع الأجهزة؟`))return;
+                    <button className="ab-btn" onClick={async()=>{
+                      const devs=Object.values(s.devices||{});
+                      const devList=devs.length?devs.map((d,i)=>`${i+1}. ${d.type||"جهاز"} · ${d.lastSeen?new Date(d.lastSeen).toLocaleDateString("ar-LY"):"—"}`).join("\n"):"لا يوجد أجهزة مسجّلة";
+                      if(!window.confirm(`📱 الأجهزة المسجّلة (${devs.length}/7)\n${devList}\n\nهل تريد إعادة ضبط جميع الأجهزة؟`))return;
                       await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
                       notify("تم إعادة ضبط الأجهزة ✅");
                     }}>📱 {Object.keys(s.devices||{}).length}/7</button>
-                    <button className="ab-btn red" title="حذف" onClick={()=>deleteSub(s.id)}>🗑 حذف</button>
+                    <button className="ab-btn red" onClick={()=>deleteSub(s.id)}>🗑 حذف</button>
                   </div>
                   <div className="sub-meta" style={{marginTop:8}}>
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
-                    {s.notes&&<span style={{display:"inline-flex",alignItems:"center",gap:6}}>📝 {s.notes} <button className="ab-btn" style={{padding:"2px 7px",fontSize:11}} onClick={async()=>{const n=prompt("تعديل الملاحظة:",s.notes||"");if(n===null)return;await updateDoc(doc(db,"subscriptions",s.id),{notes:n});notify("تم التعديل ✅");}}>✏️</button></span>}
-                    {!s.notes&&<button className="ab-btn" style={{padding:"2px 7px",fontSize:11}} onClick={async()=>{const n=prompt("أضف ملاحظة:","");if(!n)return;await updateDoc(doc(db,"subscriptions",s.id),{notes:n});notify("تم الحفظ ✅");}}>📝 إضافة ملاحظة</button>}
+                    {s.notes&&<span>📝 {s.notes}</span>}
                   </div>
                 </div>
               );
@@ -970,10 +723,9 @@ function AdminPanel({user, onBack}) {
                       {affPays.length===0
                         ?<div style={{fontSize:12,color:"var(--gray)",textAlign:"center",padding:"12px 0"}}>لا يوجد دفعات مسجلة بعد</div>
                         :affPays.map((p,i)=>(
-                          <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
-                            background:i%2===0?"rgba(255,255,255,.03)":"rgba(255,255,255,.01)",borderRadius:8,marginBottom:4}}>
+                          <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:i%2===0?"rgba(255,255,255,.03)":"rgba(255,255,255,.01)",borderRadius:8,marginBottom:4}}>
                             <div style={{flex:1}}>
-                              <span style={{fontWeight:700,color:"var(--ok)",fontSize:14}}>{"$"}{(p.amount||0).toLocaleString()}</span>
+                              <span style={{fontWeight:700,color:"var(--ok)",fontSize:14}}>${(p.amount||0).toLocaleString()}</span>
                               <span style={{fontSize:11,color:"var(--gray)",marginRight:8}}> · {p.date}</span>
                               {p.note&&<span style={{fontSize:11,color:"var(--gray2)"}}> · {p.note}</span>}
                             </div>
@@ -981,16 +733,68 @@ function AdminPanel({user, onBack}) {
                           </div>
                         ))
                       }
-                      <div style={{marginTop:8,padding:"8px 12px",background:"rgba(201,168,76,.06)",
-                        borderRadius:8,fontSize:12,fontWeight:700,color:"var(--gold)"}}>
-                        المجموع: {"$"}{totalPaid.toLocaleString()}
-                      </div>
+                      <div style={{marginTop:8,padding:"8px 12px",background:"rgba(201,168,76,.06)",borderRadius:8,fontSize:12,fontWeight:700,color:"var(--gold)"}}>المجموع: ${totalPaid.toLocaleString()}</div>
                     </div>
                   )}
                 </div>
               );
             })}
           </>
+        )}
+
+        {/* MODAL: تغيير كلمة مرور العميل */}
+        {pwModal&&(
+          <div className="dov" onClick={e=>e.target===e.currentTarget&&setPwModal(false)}>
+            <div className="drawer" style={{maxHeight:500}}>
+              <div className="dhead">
+                <span className="dt">🔑 تغيير كلمة مرور عميل</span>
+                <button className="dc" onClick={()=>setPwModal(false)}>✕</button>
+              </div>
+              <div className="dbody">
+                <p style={{fontSize:13,color:"var(--gray2)",marginBottom:16,lineHeight:1.8}}>
+                  أدخل بريد العميل وكلمة المرور الجديدة، ثم أرسلها له عبر واتساب.
+                </p>
+                {pwErr&&<div className="me">{pwErr}</div>}
+                {pwOk&&<div className="ms">{pwOk}</div>}
+                <div className="fg">
+                  <label className="fl">البريد الإلكتروني للعميل *</label>
+                  <input className="fi" type="email" inputMode="email"
+                    placeholder="example@mail.com"
+                    value={pwEmail} onChange={e=>setPwEmail(e.target.value)}
+                    autoCapitalize="none" autoCorrect="off"/>
+                </div>
+                <div className="fg">
+                  <label className="fl">كلمة المرور الجديدة *</label>
+                  <div style={{position:"relative"}}>
+                    <input className="fi" type={showPw?"text":"password"}
+                      placeholder="6 أحرف على الأقل"
+                      value={pwNew} onChange={e=>setPwNew(e.target.value)}
+                      style={{paddingLeft:44}}/>
+                    <button onClick={()=>setShowPw(p=>!p)}
+                      style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"var(--gray)"}}>
+                      {showPw?"🙈":"👁"}
+                    </button>
+                  </div>
+                  <span style={{fontSize:11,color:"var(--gray)",marginTop:4,display:"block"}}>ستُنسخ البيانات تلقائياً للحافظة بعد التغيير 📋</span>
+                </div>
+                {pwEmail&&pwNew&&pwNew.length>=6&&(
+                  <div style={{background:"rgba(201,168,76,.07)",border:"1px solid rgba(201,168,76,.2)",borderRadius:8,padding:"10px 14px",fontSize:12}}>
+                    <div style={{color:"var(--gold)",marginBottom:6,fontWeight:700}}>📋 ما سيتم نسخه:</div>
+                    <div style={{fontFamily:"monospace",color:"var(--white)",lineHeight:1.8}}>
+                      البريد: {pwEmail}<br/>
+                      كلمة المرور الجديدة: {showPw?pwNew:"••••••••"}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="dfoot">
+                <button className="bs" onClick={()=>setPwModal(false)}>إلغاء</button>
+                <button className="bsv" onClick={changeClientPassword} disabled={pwLoad}>
+                  {pwLoad?<span className="spin"/>:"🔑 تغيير ونسخ"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* MODAL: New Subscription */}
@@ -1014,8 +818,7 @@ function AdminPanel({user, onBack}) {
                       <button key={p.id} type="button"
                         className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
                         onClick={()=>setForm(f=>({...f,plan:p.id,customDays:""}))}>
-                        {p.label}<br/>
-                        <span style={{fontSize:11,opacity:.8}}>${p.price}</span>
+                        {p.label}<br/><span style={{fontSize:11,opacity:.8}}>${p.price}</span>
                       </button>
                     ))}
                   </div>
@@ -1024,28 +827,11 @@ function AdminPanel({user, onBack}) {
                       value={form.customDays||""} onChange={e=>setForm(f=>({...f,customDays:e.target.value,plan:""}))} style={{flex:1}}/>
                     <span style={{fontSize:12,color:"var(--gray)",whiteSpace:"nowrap"}}>يوم</span>
                   </div>
-                  {(form.plan||form.customDays)&&(()=>{
-                    const d=new Date();
-                    if(form.customDays) d.setDate(d.getDate()+parseInt(form.customDays));
-                    else{const p=PLANS.find(x=>x.id===form.plan);if(p)d.setMonth(d.getMonth()+p.months);}
-                    if(form.affiliateCode) d.setDate(d.getDate()+7);
-                    const selPlan=PLANS.find(x=>x.id===form.plan);
-                    const price=selPlan?selPlan.price:null;
-                    const comm=price?Math.round(price*COMMISSION_PCT/100*100)/100:null;
-                    return(
-                      <div style={{marginTop:8,background:"rgba(201,168,76,.07)",border:"1px solid rgba(201,168,76,.2)",borderRadius:8,padding:"8px 12px",fontSize:12}}>
-                        <div style={{color:"var(--ok)"}}>✅ ينتهي في: {d.toLocaleDateString("ar-LY")}{form.affiliateCode&&<span style={{color:"var(--gold)"}}> + أسبوع هدية 🎁</span>}</div>
-                        {price&&<div style={{marginTop:4,color:"var(--gold)"}}>💵 السعر: <strong>${price}</strong> &nbsp;·&nbsp; عمولة المسوّق: <strong>${comm}</strong></div>}
-                      </div>
-                    );
-                  })()}
                 </div>
                 <div className="fg">
                   <label className="fl">الحد الأقصى للعملاء (الحد الأدنى 500)</label>
                   <input className="fi" type="number" placeholder="500" value={form.maxClients} min="500"
                     onChange={e=>setForm(f=>({...f,maxClients:e.target.value}))} inputMode="numeric"/>
-                  {form.maxClients&&parseInt(form.maxClients)<500&&
-                    <span className="et">الحد الأدنى المسموح هو 500 عميل</span>}
                 </div>
                 <div className="fg">
                   <label className="fl">🤝 كود المسوّق (اختياري)</label>
@@ -1053,7 +839,6 @@ function AdminPanel({user, onBack}) {
                     <option value="">بدون مسوّق</option>
                     {affiliates.map(a=><option key={a.id} value={a.code}>{a.name} — {a.code} ({a.commissionPct}%)</option>)}
                   </select>
-                  {form.affiliateCode&&<span style={{fontSize:11,color:"var(--gold)",marginTop:4,display:"block"}}>🎁 العميل يحصل على أسبوع مجاني إضافي</span>}
                 </div>
                 <div className="fg">
                   <label className="fl">ملاحظة</label>
@@ -1085,7 +870,6 @@ function AdminPanel({user, onBack}) {
                   <input className="fi ltr" placeholder="MOHAMAD10" value={affForm.code}
                     onChange={e=>setAffForm(f=>({...f,code:e.target.value.toUpperCase().replace(/\s/g,"")}))}
                     style={{letterSpacing:2}} autoCapitalize="characters" autoCorrect="off"/>
-                  <span style={{fontSize:11,color:"var(--gray)",marginTop:4,display:"block"}}>أحرف وأرقام فقط، بدون مسافات</span>
                 </div>
                 <div className="fg">
                   <label className="fl">اسم الحساب (يوتيوب / انستغرام)</label>
@@ -1098,14 +882,6 @@ function AdminPanel({user, onBack}) {
                     {[10,15,20,25].map(p=>(
                       <button key={p} type="button" className={`plan-btn${affForm.commissionPct===p?" on":""}`}
                         onClick={()=>setAffForm(f=>({...f,commissionPct:p}))}>{p}%</button>
-                    ))}
-                  </div>
-                  {/* Show commission amount per plan */}
-                  <div style={{background:"rgba(255,255,255,.04)",borderRadius:8,padding:"8px 12px",fontSize:11,color:"var(--gray2)",marginBottom:8}}>
-                    {PLANS.map(p=>(
-                      <span key={p.id} style={{marginLeft:12}}>
-                        {p.label}: <strong style={{color:"var(--gold)"}}>${(p.price*affForm.commissionPct/100).toFixed(1)}</strong>
-                      </span>
                     ))}
                   </div>
                   <input className="fi" type="number" placeholder="أو أدخل نسبة مخصصة"
@@ -1174,11 +950,9 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
     const err={};
     if(!f.name.trim())err.name="مطلوب";
     if(!f.bankType)err.bankType="مطلوب";
-    if(f.bankType==="أخرى"&&!f.bankTypeOther?.trim())err.bankTypeOther="اكتب اسم المصرف";
+    if(f.bankType==="مصرف آخر"&&!f.bankTypeOther?.trim())err.bankTypeOther="اكتب اسم المصرف";
     if(!f.phone1.trim())err.phone1="مطلوب";
     if(!f.nationalId.trim())err.nationalId="مطلوب";
-    if(f.accountNumber&&!/^[A-Za-z0-9\s\-]+$/.test(f.accountNumber))err.accountNumber="أحرف إنجليزية وأرقام فقط";
-    if(f.iban&&!/^[A-Za-z0-9\s\-]+$/.test(f.iban))err.iban="أحرف إنجليزية وأرقام فقط";
     if(Object.keys(err).length){setE(err);return;}
     onSave(f);
   },[f,onSave]);
@@ -1198,9 +972,9 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
         </select>
         {e.bankType&&<span className="et">{e.bankType}</span>}
       </div>
-      {f.bankType==="أخرى"&&(
+      {f.bankType==="مصرف آخر"&&(
         <div className="fg full"><label className="fl">اسم المصرف *</label>
-          <input className={`fi${e.bankTypeOther?" ef":""}`} placeholder="اكتب اسم المصرف"
+          <input className={`fi${e.bankTypeOther?" ef":""}`} placeholder="اكتب اسم المصرف يدوياً"
             value={f.bankTypeOther||""} onChange={ev=>set("bankTypeOther",ev.target.value)}/>
           {e.bankTypeOther&&<span className="et">{e.bankTypeOther}</span>}
         </div>
@@ -1224,16 +998,14 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
           autoCapitalize="characters" autoCorrect="off"/>
       </div>
       <div className="fg"><label className="fl">رقم الحساب المصرفي</label>
-        <input className={`fi ltr${e.accountNumber?" ef":""}`} placeholder="ACC-123456789"
+        <input className="fi ltr" placeholder="ACC-123456789"
           value={f.accountNumber} autoCapitalize="characters" autoCorrect="off"
           onChange={ev=>set("accountNumber",ev.target.value.replace(/[^A-Za-z0-9\s\-]/g,""))}/>
-        {e.accountNumber&&<span className="et">{e.accountNumber}</span>}
       </div>
       <div className="fg"><label className="fl">رقم IBAN</label>
-        <input className={`fi ltr${e.iban?" ef":""}`} placeholder="LY83002000001016000012"
+        <input className="fi ltr" placeholder="LY83002000001016000012"
           value={f.iban} autoCapitalize="characters" autoCorrect="off"
           onChange={ev=>set("iban",ev.target.value.replace(/[^A-Za-z0-9\s\-]/g,"").toUpperCase())}/>
-        {e.iban&&<span className="et">{e.iban}</span>}
       </div>
       <div className="fg full"><label className="fl">المبلغ المدفوع</label>
         <div style={{display:"flex",gap:7}}>
@@ -1242,7 +1014,6 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
           <select className="fi" value={f.currency} onChange={ev=>set("currency",ev.target.value)} style={{width:100,flexShrink:0}}>
             <option value="د.ل">دينار ليبي</option>
             <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
           </select>
         </div>
       </div>
@@ -1302,11 +1073,11 @@ const ClientForm = memo(function ClientForm({init, onSave, submitRef}) {
 
 // ─── VIEW CLIENT ──────────────────────────────────────────────
 function ViewClient({c,onClose,onEdit}) {
-  const bank=c.bankType==="أخرى"?(c.bankTypeOther||"أخرى"):c.bankType;
+  const bank=c.bankType==="مصرف آخر"?(c.bankTypeOther||"مصرف آخر"):c.bankType;
   const rows=[
     ["الاسم",c.name],["المصرف",bank],["الهاتف 1",c.phone1],["الهاتف 2",c.phone2||"—"],
-    ["الرقم الوطني",c.nationalId],["جواز السفر",c.passportId||"—"],["رقم الحساب",c.accountNumber||"—",true],
-    ["رقم IBAN",c.iban||"—",true],
+    ["الرقم الوطني",c.nationalId],["جواز السفر",c.passportId||"—"],
+    ["رقم الحساب",c.accountNumber||"—",true],["رقم IBAN",c.iban||"—",true],
     ["المبلغ",c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"],
     ["تم الشراء من طرف",c.purchasedBy||"—"],["نوع الحجز",c.paymentType||"—"],
     ["حالة البطاقة",c.cardBooked?"✅ تم الحجز":"⏳ لم يتم بعد"],
@@ -1415,53 +1186,40 @@ function AuthScreen({onLogin}) {
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const [user,setUser]           = useState(null);
-  const [ready,setReady]         = useState(false);
-  const [subStatus,setSubStatus] = useState(null);
-  const [subDays,setSubDays]     = useState(null);
-  const [maxClients,setMaxClients] = useState(null);
-  const [clients,setClients]     = useState([]);
-  const [page,setPage]           = useState("clients");
-  const [modal,setModal]         = useState(null);
-  const [sel,setSel]             = useState(null);
-  const [notif,setNotif]         = useState(null);
-  const [bar,setBar]             = useState(false);
-  const [saving,setSaving]       = useState(false);
-  const [dark,setDark] = useState(()=>localStorage.getItem("theme")!=="light");
-  const [search,setSearch]       = useState("");
-  const [filterStatus,setFilterStatus] = useState("all");
-  const [filterBank,setFilterBank]     = useState("all");
-  const [sortBy,setSortBy]             = useState("newest");
-  const [synced,setSynced]       = useState(false);
-  const [showAdmin,setShowAdmin] = useState(false);
-  const addRef  = useRef(null);
-  const editRef = useRef(null);
-  const isAdmin = user?.uid === ADMIN_UID;
-
+  const [user,setUser]=useState(null);
+  const [ready,setReady]=useState(false);
+  const [subStatus,setSubStatus]=useState(null);
+  const [subDays,setSubDays]=useState(null);
+  const [maxClients,setMaxClients]=useState(null);
+  const [clients,setClients]=useState([]);
+  const [page,setPage]=useState("clients");
+  const [modal,setModal]=useState(null);
+  const [sel,setSel]=useState(null);
+  const [notif,setNotif]=useState(null);
+  const [bar,setBar]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [dark,setDark]=useState(()=>localStorage.getItem("theme")!=="light");
+  const [search,setSearch]=useState("");
+  const [filterStatus,setFilterStatus]=useState("all");
+  const [filterBank,setFilterBank]=useState("all");
+  const [sortBy,setSortBy]=useState("newest");
+  const [synced,setSynced]=useState(false);
+  const [showAdmin,setShowAdmin]=useState(false);
+  const addRef=useRef(null);
+  const editRef=useRef(null);
+  const isAdmin=user?.uid===ADMIN_UID;
   const notify=useCallback((msg,type="ok")=>setNotif({msg,type}),[]);
 
   useEffect(()=>{
-    return onAuthStateChanged(auth,u=>{
-      setUser(u);
-      setReady(true);
-      if(!u){
-        setSubStatus(null);
-        setSynced(false);
-      }
-    });
+    return onAuthStateChanged(auth,u=>{setUser(u);setReady(true);if(!u){setSubStatus(null);setSynced(false);}});
   },[]);
 
-  // Generate unique device ID (stored in localStorage)
-  const getDeviceId = useCallback(()=>{
-    let id = localStorage.getItem("deviceId");
-    if(!id){
-      id = "dev_" + Math.random().toString(36).substr(2,9) + "_" + Date.now().toString(36);
-      localStorage.setItem("deviceId", id);
-    }
+  const getDeviceId=useCallback(()=>{
+    let id=localStorage.getItem("deviceId");
+    if(!id){id="dev_"+Math.random().toString(36).substr(2,9)+"_"+Date.now().toString(36);localStorage.setItem("deviceId",id);}
     return id;
   },[]);
 
-  // Subscription check + device registration
   useEffect(()=>{
     if(!user){setSubStatus(null);return;}
     if(user.uid===ADMIN_UID){setSubStatus("active");setSubDays(9999);setMaxClients(999999);return;}
@@ -1471,60 +1229,27 @@ export default function App() {
       const subDoc=snap.docs[0];
       const sub=subDoc.data();
       const days=daysLeft(sub.expiresAt);
-      setSubDays(days);
-      setMaxClients(sub.maxClients||999999);
+      setSubDays(days);setMaxClients(sub.maxClients||999999);
       if(days<=0){setSubStatus("expired");return;}
-
-      // Device tracking — max 7 devices
-      const deviceId = getDeviceId();
-      const devices = sub.devices || {};
-      const ua = navigator.userAgent;
-      const getDeviceInfo = () => {
-        if(/iPhone/i.test(ua)) return "iPhone 📱";
-        if(/iPad/i.test(ua)) return "iPad 📱";
-        if(/Samsung|SM-/i.test(ua)) return "Samsung 📱";
-        if(/Huawei|HUAWEI/i.test(ua)) return "Huawei 📱";
-        if(/Xiaomi|Redmi/i.test(ua)) return "Xiaomi 📱";
-        if(/Oppo/i.test(ua)) return "Oppo 📱";
-        if(/Vivo/i.test(ua)) return "Vivo 📱";
-        if(/Android/i.test(ua)) return "Android 📱";
-        if(/Windows/i.test(ua)) return "Windows 💻";
-        if(/Mac/i.test(ua)) return "Mac 💻";
-        return "جهاز غير معروف";
+      const deviceId=getDeviceId();
+      const devices=sub.devices||{};
+      const ua=navigator.userAgent;
+      const getDeviceInfo=()=>{
+        if(/iPhone/i.test(ua))return"iPhone 📱";if(/iPad/i.test(ua))return"iPad 📱";
+        if(/Samsung|SM-/i.test(ua))return"Samsung 📱";if(/Android/i.test(ua))return"Android 📱";
+        if(/Windows/i.test(ua))return"Windows 💻";if(/Mac/i.test(ua))return"Mac 💻";
+        return"جهاز غير معروف";
       };
-      const deviceType = getDeviceInfo();
-      const deviceEntry = { uid: user.uid, email: user.email, lastSeen: new Date().toISOString(), type: deviceType };
-
+      const deviceEntry={uid:user.uid,email:user.email,lastSeen:new Date().toISOString(),type:getDeviceInfo()};
       if(devices[deviceId]){
-        // Known device — update lastSeen silently
-        await updateDoc(doc(db,"subscriptions",subDoc.id),{
-          [`devices.${deviceId}`]: deviceEntry
-        });
+        await updateDoc(doc(db,"subscriptions",subDoc.id),{[`devices.${deviceId}`]:deviceEntry});
         setSubStatus("active");
-      } else {
-        const deviceCount = Object.keys(devices).length;
-        if(deviceCount >= 7){
-          setSubStatus("device_limit");
-        } else {
-          await updateDoc(doc(db,"subscriptions",subDoc.id),{
-            [`devices.${deviceId}`]: deviceEntry
-          });
-          setSubStatus("active");
-        }
+      }else{
+        if(Object.keys(devices).length>=7)setSubStatus("device_limit");
+        else{await updateDoc(doc(db,"subscriptions",subDoc.id),{[`devices.${deviceId}`]:deviceEntry});setSubStatus("active");}
       }
     });
-  },[user, getDeviceId]);
-
-  // Auto backup every hour
-  useEffect(()=>{
-    if(!clients.length)return;
-    const last=localStorage.getItem("lastBackup");
-    const now=Date.now();
-    if(!last||now-parseInt(last)>3600000){
-      localStorage.setItem("lastBackup",now.toString());
-      localStorage.setItem("clientsBackup",JSON.stringify(clients));
-    }
-  },[clients]);
+  },[user,getDeviceId]);
 
   useEffect(()=>{
     if(!user||subStatus==="none"){setClients([]);setSynced(false);return;}
@@ -1538,7 +1263,7 @@ export default function App() {
 
   const handleAdd=useCallback(async(form)=>{
     if(!canWrite){notify("اشتراكك منتهي","err");return;}
-    if(atLimit){notify(`وصلت للحد الأقصى (${maxClients} عميل). تواصل مع المسؤول للترقية`,"err");return;}
+    if(atLimit){notify(`وصلت للحد الأقصى (${maxClients} عميل)`,"err");return;}
     setSaving(true);
     try{
       await addDoc(collection(db,"clients"),{...form,uid:user.uid,createdBy:user.email,createdAt:serverTimestamp(),updatedAt:null,updatedBy:null});
@@ -1567,17 +1292,11 @@ export default function App() {
     setSaving(false);
   },[user,sel,notify,canWrite]);
 
-  // Filters — search by name, phone, national ID, IBAN
   const filtered=clients.filter(c=>{
     const q=search.toLowerCase().trim();
-    const m=!q||
-      c.name?.toLowerCase().includes(q)||
-      c.phone1?.includes(q)||
-      c.phone2?.includes(q)||
-      c.nationalId?.includes(q)||
-      c.passportId?.toLowerCase().includes(q)||
-      c.iban?.toLowerCase().includes(q);
-    const bank=c.bankType==="أخرى"?c.bankTypeOther||"أخرى":c.bankType;
+    const m=!q||c.name?.toLowerCase().includes(q)||c.phone1?.includes(q)||c.phone2?.includes(q)||
+      c.nationalId?.includes(q)||c.passportId?.toLowerCase().includes(q)||c.iban?.toLowerCase().includes(q);
+    const bank=c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType;
     const fb=filterBank==="all"||bank===filterBank||c.bankType===filterBank;
     const fs=filterStatus==="all"
       ||(filterStatus==="booked"&&c.cardBooked&&!c.isSold)
@@ -1585,13 +1304,13 @@ export default function App() {
       ||(filterStatus==="sold"&&c.isSold);
     return m&&fb&&fs;
   }).sort((a,b)=>{
-    if(sortBy==="newest") return 0;
+    if(sortBy==="newest")return 0;
     if(sortBy==="booking_asc"||sortBy==="booking_desc"){
-      const da = a.bookingDate ? new Date(a.bookingDate) : new Date(0);
-      const db = b.bookingDate ? new Date(b.bookingDate) : new Date(0);
-      return sortBy==="booking_asc" ? da-db : db-da;
+      const da=a.bookingDate?new Date(a.bookingDate):new Date(0);
+      const db2=b.bookingDate?new Date(b.bookingDate):new Date(0);
+      return sortBy==="booking_asc"?da-db2:db2-da;
     }
-    if(sortBy==="alpha") return (a.name||"").localeCompare(b.name||"","ar");
+    if(sortBy==="alpha")return(a.name||"").localeCompare(b.name||"","ar");
     return 0;
   });
 
@@ -1600,13 +1319,9 @@ export default function App() {
   const pending=clients.filter(c=>!c.cardBooked&&!c.isSold).length;
   const sold=clients.filter(c=>c.isSold).length;
   const totalAmt=clients.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
-  const bankNames=[...new Set(clients.map(c=>c.bankType==="أخرى"?c.bankTypeOther||"أخرى":c.bankType).filter(Boolean))];
+  const bankNames=[...new Set(clients.map(c=>c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType).filter(Boolean))];
 
-  if(!ready)return(
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a1628"}}>
-      <style>{CSS}</style><span className="spin spin2" style={{width:36,height:36,borderWidth:3}}/>
-    </div>
-  );
+  if(!ready)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a1628"}}><style>{CSS}</style><span className="spin spin2" style={{width:36,height:36,borderWidth:3}}/></div>);
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
   if(subStatus==="none")return <ActivationScreen user={user} onActivated={()=>setSubStatus(null)}/>;
   if(subStatus==="device_limit")return(
@@ -1614,11 +1329,7 @@ export default function App() {
       <div className="ac">
         <div className="al2"><div className="li">🚫</div><h1>تجاوزت الحد الأقصى للأجهزة</h1></div>
         <div style={{background:"rgba(231,76,60,.08)",border:"1px solid rgba(231,76,60,.25)",borderRadius:12,padding:20,marginBottom:20,textAlign:"center"}}>
-          <div style={{fontSize:40,marginBottom:12}}>📱📱📱</div>
-          <p style={{color:"var(--gray2)",fontSize:14,lineHeight:1.8}}>
-            اشتراكك مسجّل على <strong style={{color:"var(--white)"}}>7 أجهزة</strong> وهو الحد الأقصى المسموح به.<br/>
-            لإضافة هذا الجهاز، تواصل مع المسؤول لإعادة ضبط أجهزتك.
-          </p>
+          <p style={{color:"var(--gray2)",fontSize:14,lineHeight:1.8}}>اشتراكك مسجّل على <strong style={{color:"var(--white)"}}>7 أجهزة</strong> وهو الحد الأقصى.<br/>تواصل مع المسؤول لإعادة ضبط أجهزتك.</p>
         </div>
         <button className="bp" onClick={()=>signOut(auth)}>تسجيل خروج</button>
       </div>
@@ -1626,37 +1337,29 @@ export default function App() {
   );
   if(showAdmin&&isAdmin)return <AdminPanel user={user} onBack={()=>setShowAdmin(false)}/>;
 
-  const nav=[
-    {k:"dashboard",i:"📊",l:"الإحصائيات"},
-    {k:"clients",  i:"👥",l:"العملاء"},
-  ];
-
   return(
     <div className={`app ${dark?"dark":"light"}`}>
       <style>{CSS}</style>
-
       <div className="mh">
         <button className="mb" onClick={()=>setBar(o=>!o)}>☰</button>
         <span style={{color:"var(--gold)",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6}}><Logo size={22}/>إدارة بطاقاتك</span>
-        {canWrite&&!atLimit
-          ?<button className="mb" onClick={()=>{setSel(null);setModal("add");setBar(false);}}>＋</button>
-          :<span className="readonly-badge">{atLimit?"🚫 حد أقصى":"👁 قراءة"}</span>
-        }
+        {canWrite&&!atLimit?<button className="mb" onClick={()=>{setSel(null);setModal("add");setBar(false);}}>＋</button>
+          :<span className="readonly-badge">{atLimit?"🚫 حد أقصى":"👁 قراءة"}</span>}
       </div>
       {bar&&<div className="ov open" onClick={()=>setBar(false)}/>}
-
       <div className={`sidebar${bar?" open":""}`}>
         <div className="sl">
           <div className="sl-i"><Logo size={26}/></div>
           <div className="sl-t"><h2>إدارة بطاقاتك</h2><p>منصة آمنة ومتزامنة</p></div>
         </div>
-        <nav>{nav.map(n=>(
-          <button key={n.k} className={`ni${page===n.k?" on":""}`} onClick={()=>{setPage(n.k);setBar(false);}}>
-            <span>{n.i}</span>{n.l}
-          </button>
-        ))}
-        {isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
-        <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}><span>📱</span>تواصل مع خدمة العملاء</a>
+        <nav>
+          {[{k:"dashboard",i:"📊",l:"الإحصائيات"},{k:"clients",i:"👥",l:"العملاء"}].map(n=>(
+            <button key={n.k} className={`ni${page===n.k?" on":""}`} onClick={()=>{setPage(n.k);setBar(false);}}>
+              <span>{n.i}</span>{n.l}
+            </button>
+          ))}
+          {isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
+          <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}><span>📱</span>تواصل مع خدمة العملاء</a>
         </nav>
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
@@ -1669,20 +1372,7 @@ export default function App() {
       <main className="main">
         {subStatus==="expired"&&<div className="sub-expired">⚠️ انتهى اشتراكك — مشاهدة فقط. تواصل مع المسؤول للتجديد.</div>}
         {subStatus==="active"&&subDays<=7&&subDays>0&&subDays<9999&&<div className="mw">⚠️ اشتراكك ينتهي خلال {subDays} أيام. تواصل مع المسؤول للتجديد.</div>}
-        {atLimit&&canWrite&&(
-          <div style={{background:"rgba(231,76,60,.08)",border:"1px solid rgba(231,76,60,.25)",
-            borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",
-            alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-            <div style={{fontSize:13,color:"#ff8a80"}}>
-              🚫 وصلت للحد الأقصى <strong>({maxClients} عميل)</strong> — لا يمكن إضافة المزيد
-            </div>
-            <div style={{fontSize:12,color:"var(--gray2)"}}>
-              تواصل مع المسؤول لزيادة الحد أو ترقية باقتك
-            </div>
-          </div>
-        )}
 
-        {/* DASHBOARD */}
         {page==="dashboard"&&(
           <>
             <div className="ph">
@@ -1692,27 +1382,6 @@ export default function App() {
                 {subStatus==="active"&&subDays<9999&&<span className="sub-ok">✅ {subDays} يوم</span>}
               </div>
             </div>
-            {maxClients&&maxClients<999999&&(
-              <div className="limit-bar">
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span>استخدام الباقة</span>
-                  <span style={{color:total>=maxClients?"var(--err)":total/maxClients>0.85?"var(--warn)":"var(--gold)",fontWeight:700}}>
-                    {total} / {maxClients} عميل
-                    {total>=maxClients&&" 🚫 وصلت للحد"}
-                    {total/maxClients>0.85&&total<maxClients&&" ⚠️ اقتربت من الحد"}
-                  </span>
-                </div>
-                <div className="limit-progress">
-                  <div className={`limit-fill${total/maxClients>0.85?" danger":""}`}
-                    style={{width:`${Math.min(total/maxClients*100,100)}%`}}/>
-                </div>
-                {total>=maxClients&&(
-                  <div style={{marginTop:6,fontSize:11,color:"#ff8a80"}}>
-                    تواصل مع المسؤول لزيادة الحد أو ترقية باقتك 👆
-                  </div>
-                )}
-              </div>
-            )}
             <div className="stats">
               {[
                 {i:"👥",v:total,l:"إجمالي العملاء",s:"عميل مسجل"},
@@ -1732,7 +1401,6 @@ export default function App() {
           </>
         )}
 
-        {/* CLIENTS */}
         {page==="clients"&&(
           <>
             <div className="ph">
@@ -1771,13 +1439,10 @@ export default function App() {
               {filtered.length===0
                 ?<div className="emp"><div className="ei">📋</div><div className="et2">{!clients.length?"اضغط + لإضافة أول عميل":"لا توجد نتائج"}</div></div>
                 :<table>
-                  <thead><tr>
-                    <th>الاسم</th><th className="hm">المصرف</th>
-                    <th className="hm">المبلغ</th><th>البطاقة</th><th></th>
-                  </tr></thead>
+                  <thead><tr><th>الاسم</th><th className="hm">المصرف</th><th className="hm">المبلغ</th><th>البطاقة</th><th></th></tr></thead>
                   <tbody>
                     {filtered.map(c=>{
-                      const bank=c.bankType==="أخرى"?c.bankTypeOther||"أخرى":c.bankType;
+                      const bank=c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType;
                       return(
                         <tr key={c.id} className={c.isSold?"sold-row":""}>
                           <td className="nm">{c.name}</td>
@@ -1799,8 +1464,6 @@ export default function App() {
             <div style={{marginTop:7,fontSize:11,color:"var(--gray)"}}>{filtered.length} عميل</div>
           </>
         )}
-
-        {/* LOGS */}
       </main>
 
       {modal==="add"&&canWrite&&!atLimit&&(
