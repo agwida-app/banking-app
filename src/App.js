@@ -32,6 +32,7 @@ const BANKS = [
 ];
 
 const PLANS = [
+  { id:"7d",  label:"7 أيام",  days:7,    price:5   },
   { id:"1m",  label:"شهر",     months:1,  price:10  },
   { id:"3m",  label:"3 أشهر",  months:3,  price:30  },
   { id:"6m",  label:"6 أشهر",  months:6,  price:60  },
@@ -243,6 +244,11 @@ function daysLeft(expiresAt) {
 function addMonths(months) {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
+  return d;
+}
+function addDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
   return d;
 }
 
@@ -479,7 +485,7 @@ function AdminPanel({user, onBack}) {
         planLabel=`${form.customDays} يوم (مخصص)`;
       }else{
         const plan=PLANS.find(p=>p.id===form.plan);
-        expDate=addMonths(plan.months);planLabel=plan.label;
+        expDate=plan.days?addDays(plan.days):addMonths(plan.months);planLabel=plan.label;
       }
       if(form.affiliateCode.trim()){expDate.setDate(expDate.getDate()+7);planLabel+=" + أسبوع مجاني 🎁";}
       const codeKey=form.code.trim().toUpperCase();
@@ -560,11 +566,11 @@ function AdminPanel({user, onBack}) {
   };
 
   const renewSub=async(sub)=>{
-    const planId=prompt("أدخل الباقة (1m / 3m / 6m / 12m):",sub.plan||"3m");
+    const planId=prompt("أدخل الباقة (7d / 1m / 3m / 6m / 12m):",sub.plan||"3m");
     if(!planId)return;
     const plan=PLANS.find(p=>p.id===planId);
     if(!plan){alert("باقة غير صحيحة");return;}
-    await updateDoc(doc(db,"subscriptions",sub.id),{expiresAt:addMonths(plan.months),plan:planId,planLabel:plan.label});
+    await updateDoc(doc(db,"subscriptions",sub.id),{expiresAt:plan.days?addDays(plan.days):addMonths(plan.months),plan:planId,planLabel:plan.label});
     notify("تم التجديد ✅");
   };
 
