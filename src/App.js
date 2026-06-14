@@ -11,7 +11,7 @@ import {
 import { auth, db } from "./firebase";
 
 const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
-const ADMIN_SECRET_TOKEN = "sk_live_agwida_2026";
+const ADMIN_SECRET_TOKEN = process.env.REACT_APP_ADMIN_TOKEN || "sk_live_agwida_2026";
 
 const Logo = ({size=40}) => (
   <img
