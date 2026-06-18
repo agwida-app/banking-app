@@ -103,7 +103,7 @@ body{background:var(--bg);color:var(--white);min-height:100vh;transition:backgro
 .chip-exp{background:rgba(231,76,60,.12);color:var(--err);border:1px solid rgba(231,76,60,.25)}
 .chip-free{background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.25)}
 .admin-action-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
-.ab-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--gray2);cursor:pointer;padding:6px 11px;font-size:12px;font-family:'Tajawal',sans-serif;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.ab-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--gray2);cursor:pointer;padding:6px 11px;font-size:12px;font-family:'Tajawal',sans-serif;display:inline-flex;align-items:center;gap:4px;transition:all .15s;text-decoration:none}
 .ab-btn:hover{background:rgba(255,255,255,.1);color:var(--white)}
 .ab-btn.green{color:var(--ok);border-color:rgba(46,204,113,.2)}
 .ab-btn.gold{color:var(--gold);border-color:rgba(201,168,76,.3)}
@@ -228,6 +228,19 @@ textarea.fi{resize:none}
 .spin2{border-top-color:var(--gold);border-color:rgba(255,255,255,.15)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .syn{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ok);background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:20px;padding:2px 9px}
+.reminder-box{background:rgba(243,156,18,.06);border:1px solid rgba(243,156,18,.25);border-radius:14px;padding:16px 18px;margin-bottom:18px}
+.reminder-box h3{font-size:13px;font-weight:900;color:var(--warn);margin-bottom:12px}
+.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap}
+.reminder-row:first-of-type{border-top:none;padding-top:0}
+.revenue-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:18px}
+.revenue-section h3{font-size:13px;font-weight:900;color:var(--gold);margin-bottom:12px}
+.rev-chart{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:10px}
+.rev-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;min-width:0}
+.rev-bar-track{width:100%;max-width:36px;height:104px;background:rgba(255,255,255,.05);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
+.rev-bar-fill{width:100%;background:linear-gradient(to top,var(--gold),var(--gold2));border-radius:6px;transition:height .4s}
+.rev-bar-val{font-size:10px;color:var(--gold);margin-top:5px;font-weight:700;white-space:nowrap}
+.rev-bar-label{font-size:10px;color:var(--gray);margin-top:2px;white-space:nowrap}
+.light .rev-bar-track{background:rgba(0,0,0,.05)}
 @media print{body{background:#fff!important;color:#000!important}}
 `;
 
@@ -250,6 +263,54 @@ function addDays(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d;
+}
+
+// ─── إحصائيات الإيرادات الشهرية ─────────────────────────────
+function getMonthlyRevenue(subs, monthsBack = 6) {
+  const now = new Date();
+  const months = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleDateString("ar-LY", { month: "short", year: "2-digit" }),
+      total: 0,
+    });
+  }
+  subs.forEach(s => {
+    if (!s.createdAt) return;
+    const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const m = months.find(mo => mo.key === key);
+    if (m) {
+      const plan = PLANS.find(p => p.id === s.plan);
+      m.total += plan ? plan.price : 0;
+    }
+  });
+  return months;
+}
+
+function RevenueChart({ data }) {
+  const max = Math.max(...data.map(d => d.total), 1);
+  const grandTotal = data.reduce((s, d) => s + d.total, 0);
+  return (
+    <div>
+      <div className="rev-chart">
+        {data.map((d, i) => (
+          <div key={i} className="rev-bar-col">
+            <div className="rev-bar-track">
+              <div className="rev-bar-fill" style={{ height: `${(d.total / max) * 100 || 0}%` }} title={`$${d.total}`} />
+            </div>
+            <div className="rev-bar-val">{d.total > 0 ? `$${d.total}` : ""}</div>
+            <div className="rev-bar-label">{d.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: "var(--gray2)", textAlign: "left", direction: "ltr" }}>
+        Total: <strong style={{ color: "var(--gold)" }}>${grandTotal.toLocaleString()}</strong>
+      </div>
+    </div>
+  );
 }
 
 function generatePDF(clients, single = null) {
@@ -418,11 +479,16 @@ function AdminPanel({user, onBack}) {
   const [affiliates,setAff]=useState([]);
   const [tab,setTab]=useState("subs");
   const [modal,setModal]=useState(null);
-  const [form,setForm]=useState({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
+  const [form,setForm]=useState({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:"",clientPhone:""});
   const [affForm,setAffForm]=useState({name:"",handle:"",code:"",commissionPct:10,notes:""});
   const [saving,setSaving]=useState(false);
   const [notif,setNotif]=useState(null);
   const notify=(msg,type="ok")=>setNotif({msg,type});
+
+  // ─── بحث وفلترة الاشتراكات ───
+  const [subSearch,setSubSearch]=useState("");
+  const [subFilterStatus,setSubFilterStatus]=useState("all");
+  const [subSortBy,setSubSortBy]=useState("expiry_asc");
 
   // ─── تغيير كلمة مرور العميل ───
   const [pwModal,setPwModal]=useState(false);
@@ -494,10 +560,11 @@ function AdminPanel({user, onBack}) {
         maxClients:Math.max(500,parseInt(form.maxClients)||500),expiresAt:expDate,
         usedBy:null,usedAt:null,usedByEmail:null,
         affiliateCode:form.affiliateCode.trim().toUpperCase()||null,
+        clientPhone:form.clientPhone.trim().replace(/[^0-9+]/g,"")||null,
         createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,devices:{}
       });
       notify("تم إنشاء الكود ✅");
-      setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:""});
+      setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:"",clientPhone:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
   };
@@ -574,6 +641,45 @@ function AdminPanel({user, onBack}) {
     notify("تم التجديد ✅");
   };
 
+  // ─── إحصائيات الاشتراكات ───
+  const activeCount = subs.filter(s=>s.usedBy&&daysLeft(s.expiresAt)>0).length;
+  const availableCount = subs.filter(s=>!s.usedBy).length;
+  const expiredCount = subs.filter(s=>daysLeft(s.expiresAt)<=0).length;
+  const expiringSoon = subs.filter(s=>{
+    const d=daysLeft(s.expiresAt);
+    return s.usedBy && d>0 && d<=3;
+  }).sort((a,b)=>daysLeft(a.expiresAt)-daysLeft(b.expiresAt));
+
+  // ─── فلترة وبحث الاشتراكات ───
+  const filteredSubs = subs.filter(s=>{
+    const q=subSearch.toLowerCase().trim();
+    const matchesSearch = !q
+      || (s.code||s.id||"").toLowerCase().includes(q)
+      || (s.usedByEmail||"").toLowerCase().includes(q)
+      || (s.clientPhone||"").includes(q)
+      || (s.notes||"").toLowerCase().includes(q);
+    const days=daysLeft(s.expiresAt);
+    const isActive=s.usedBy&&days>0;
+    const isExpired=days<=0;
+    const isAvailable=!s.usedBy&&!isExpired;
+    const matchesStatus = subFilterStatus==="all"
+      || (subFilterStatus==="active"&&isActive)
+      || (subFilterStatus==="available"&&isAvailable)
+      || (subFilterStatus==="expired"&&isExpired)
+      || (subFilterStatus==="soon"&&isActive&&days<=3);
+    return matchesSearch&&matchesStatus;
+  }).sort((a,b)=>{
+    const da=daysLeft(a.expiresAt), dbl=daysLeft(b.expiresAt);
+    if(subSortBy==="expiry_asc")return da-dbl;
+    if(subSortBy==="expiry_desc")return dbl-da;
+    return 0;
+  });
+
+  const sendReminderMsg=(s)=>{
+    const days=daysLeft(s.expiresAt);
+    return `مرحباً 👋\n\nنود تذكيرك أن اشتراكك في تطبيق إدارة بطاقاتك سينتهي بعد ${days} ${days===1?"يوم":"أيام"} (${fmt(s.expiresAt)}).\n\nللتجديد تواصل معنا أو فعّل كود تجديد جديد.\n\n🔑 الكود الحالي: ${s.code||s.id}`;
+  };
+
   return(
     <div className="aw" style={{alignItems:"flex-start",paddingTop:0}}><style>{CSS}</style>
       <div className="admin-wrap">
@@ -593,14 +699,76 @@ function AdminPanel({user, onBack}) {
 
         {tab==="subs"&&(
           <>
-            <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
-              الكل: <strong style={{color:"var(--white)"}}>{subs.length}</strong> •
-              مفعّلة: <strong style={{color:"var(--ok)"}}>{subs.filter(s=>s.usedBy&&daysLeft(s.expiresAt)>0).length}</strong> •
-              متاحة: <strong style={{color:"var(--gold)"}}>{subs.filter(s=>!s.usedBy).length}</strong> •
-              منتهية: <strong style={{color:"var(--err)"}}>{subs.filter(s=>daysLeft(s.expiresAt)<=0).length}</strong>
+            {/* بطاقات إحصائية */}
+            <div className="stats">
+              {[
+                {i:"🔑",v:subs.length,l:"إجمالي الأكواد"},
+                {i:"✅",v:activeCount,l:"نشط",c:"var(--ok)"},
+                {i:"🔓",v:availableCount,l:"متاح",c:"var(--gold)"},
+                {i:"❌",v:expiredCount,l:"منتهي",c:"var(--err)"},
+                {i:"⏰",v:expiringSoon.length,l:"ينتهي قريباً (≤3 أيام)",c:"var(--warn)"},
+              ].map((s,i)=>(
+                <div key={i} className="sc">
+                  <div className="si">{s.i}</div>
+                  <div className="sv" style={s.c?{color:s.c}:{}}>{s.v}</div>
+                  <div className="sl2">{s.l}</div>
+                </div>
+              ))}
             </div>
-            {subs.length===0&&<div className="emp"><div className="ei">🔑</div><div className="et2">لا يوجد اشتراكات بعد</div></div>}
-            {subs.map(s=>{
+
+            {/* رسم بياني للإيرادات الشهرية */}
+            <div className="revenue-section">
+              <h3>📈 الإيرادات الشهرية (آخر 6 أشهر)</h3>
+              <RevenueChart data={getMonthlyRevenue(subs,6)}/>
+            </div>
+
+            {/* تنبيهات الاشتراكات القريبة من الانتهاء */}
+            {expiringSoon.length>0&&(
+              <div className="reminder-box">
+                <h3>⏰ اشتراكات تنتهي قريباً — أرسل تذكيراً الآن</h3>
+                {expiringSoon.map(s=>{
+                  const days=daysLeft(s.expiresAt);
+                  const phone=(s.clientPhone||"").replace(/[^0-9]/g,"");
+                  return(
+                    <div key={s.id} className="reminder-row">
+                      <div>
+                        <span className="sub-code" style={{fontSize:13}}>{s.code||s.id}</span>
+                        <div style={{fontSize:11,color:"var(--gray2)",marginTop:2}}>
+                          {s.usedByEmail||"—"} · باقي {days} {days===1?"يوم":"أيام"}
+                        </div>
+                      </div>
+                      {phone
+                        ?<a className="ab-btn green" href={`https://wa.me/${phone}?text=${encodeURIComponent(sendReminderMsg(s))}`} target="_blank" rel="noopener noreferrer">📲 إرسال تذكير</a>
+                        :<span style={{fontSize:11,color:"var(--gray)"}}>لا يوجد رقم محفوظ</span>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* بحث وفلترة */}
+            <div className="fr">
+              <div className="sw" style={{flex:2,minWidth:160}}>
+                <span className="si2">🔍</span>
+                <input className="fi" placeholder="بحث بالكود، البريد، الهاتف، الملاحظات..."
+                  value={subSearch} onChange={e=>setSubSearch(e.target.value)}/>
+              </div>
+              <select className="fs" value={subFilterStatus} onChange={e=>setSubFilterStatus(e.target.value)}>
+                <option value="all">الكل ({subs.length})</option>
+                <option value="active">✅ نشط ({activeCount})</option>
+                <option value="available">🔓 متاح ({availableCount})</option>
+                <option value="expired">❌ منتهي ({expiredCount})</option>
+                <option value="soon">⏰ ينتهي قريباً ({expiringSoon.length})</option>
+              </select>
+              <select className="fs" value={subSortBy} onChange={e=>setSubSortBy(e.target.value)}>
+                <option value="expiry_asc">📅 الأقرب للانتهاء أولاً</option>
+                <option value="expiry_desc">📅 الأبعد عن الانتهاء أولاً</option>
+              </select>
+            </div>
+
+            {filteredSubs.length===0&&<div className="emp"><div className="ei">🔑</div><div className="et2">{subs.length===0?"لا يوجد اشتراكات بعد":"لا توجد نتائج مطابقة"}</div></div>}
+            {filteredSubs.map(s=>{
               const days=daysLeft(s.expiresAt);
               const isActive=s.usedBy&&days>0;
               const isExpired=days<=0;
@@ -626,6 +794,9 @@ function AdminPanel({user, onBack}) {
                       const msg=`مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n🔑 كود التفعيل:\n${s.code||s.id}\n\n📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"`;
                       navigator.clipboard.writeText(msg);notify("تم نسخ رسالة الترحيب ✅");
                     }}>✉️ رسالة</button>
+                    {s.clientPhone&&isActive&&(
+                      <a className="ab-btn green" href={`https://wa.me/${s.clientPhone.replace(/[^0-9]/g,"")}?text=${encodeURIComponent(sendReminderMsg(s))}`} target="_blank" rel="noopener noreferrer">📲 تذكير واتساب</a>
+                    )}
                     <button className="ab-btn" onClick={()=>renewSub(s)}>🔄 تجديد</button>
                     <button className="ab-btn" onClick={async()=>{
                       const newMax=prompt("أدخل الحد الجديد للعملاء (الحد الأدنى 500):",s.maxClients||500);
@@ -646,6 +817,7 @@ function AdminPanel({user, onBack}) {
                   </div>
                   <div className="sub-meta" style={{marginTop:8}}>
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
+                    {s.clientPhone&&<><span>📱 {s.clientPhone}</span><br/></>}
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
                     {s.notes&&<span>📝 {s.notes}</span>}
@@ -811,6 +983,11 @@ function AdminPanel({user, onBack}) {
                     <option value="">بدون مسوّق</option>
                     {affiliates.map(a=><option key={a.id} value={a.code}>{a.name} — {a.code} ({a.commissionPct}%)</option>)}
                   </select>
+                </div>
+                <div className="fg">
+                  <label className="fl">📱 رقم هاتف العميل (واتساب) <span style={{color:"var(--gray)",fontWeight:400,fontSize:11}}>(لإرسال تنبيه انتهاء الاشتراك تلقائياً)</span></label>
+                  <input className="fi ltr" type="tel" placeholder="218912345678" value={form.clientPhone}
+                    onChange={e=>setForm(f=>({...f,clientPhone:e.target.value.replace(/[^0-9+]/g,"")}))} inputMode="tel"/>
                 </div>
                 <div className="fg">
                   <label className="fl">ملاحظة</label>
