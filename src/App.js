@@ -265,6 +265,28 @@ function addDays(days) {
   return d;
 }
 
+// ─── حالة استخدام العميل الفعلي للتطبيق ──────────────────────
+function getLastSeen(sub) {
+  const devices = Object.values(sub.devices || {});
+  if (!devices.length) return null;
+  const times = devices.map(d => d.lastSeen ? new Date(d.lastSeen).getTime() : 0).filter(t => t > 0);
+  if (!times.length) return null;
+  return new Date(Math.max(...times));
+}
+function daysSince(date) {
+  if (!date) return null;
+  return Math.floor((new Date() - date) / (1000*60*60*24));
+}
+function getUsageInfo(sub) {
+  if (!sub.usedBy) return { label: null, color: null, inactive: false, days: null };
+  const lastSeen = getLastSeen(sub);
+  const sd = daysSince(lastSeen);
+  if (sd === null) return { label: "⚪ لم يسجّل دخول من أي جهاز بعد", color: "var(--gray)", inactive: true, days: null };
+  if (sd <= 1) return { label: "🟢 يستخدم التطبيق الآن", color: "var(--ok)", inactive: false, days: sd };
+  if (sd <= 7) return { label: `🟡 آخر استخدام قبل ${sd} يوم`, color: "var(--warn)", inactive: false, days: sd };
+  return { label: `🔴 غير نشط منذ ${sd} يوم`, color: "var(--err)", inactive: true, days: sd };
+}
+
 // ─── إحصائيات الإيرادات الشهرية ─────────────────────────────
 function getMonthlyRevenue(subs, monthsBack = 6) {
   const now = new Date();
@@ -489,6 +511,7 @@ function AdminPanel({user, onBack}) {
   const [subSearch,setSubSearch]=useState("");
   const [subFilterStatus,setSubFilterStatus]=useState("all");
   const [subSortBy,setSubSortBy]=useState("expiry_asc");
+  const [revMonths,setRevMonths]=useState(6);
 
   // ─── تغيير كلمة مرور العميل ───
   const [pwModal,setPwModal]=useState(false);
@@ -649,6 +672,21 @@ function AdminPanel({user, onBack}) {
     const d=daysLeft(s.expiresAt);
     return s.usedBy && d>0 && d<=3;
   }).sort((a,b)=>daysLeft(a.expiresAt)-daysLeft(b.expiresAt));
+  const inactiveUsageCount = subs.filter(s=>{
+    if(!s.usedBy) return false;
+    if(daysLeft(s.expiresAt)<=0) return false;
+    return getUsageInfo(s).inactive;
+  }).length;
+
+  // ─── إحصائيات الإيرادات ───
+  const allTimeRevenue = subs.reduce((sum,s)=>{
+    const plan = PLANS.find(p=>p.id===s.plan);
+    return sum + (plan?plan.price:0);
+  },0);
+  const thisMonthRevenueData = getMonthlyRevenue(subs,1);
+  const thisMonthRevenue = thisMonthRevenueData.length ? thisMonthRevenueData[thisMonthRevenueData.length-1].total : 0;
+  const pricedSubsCount = subs.filter(s=>PLANS.find(p=>p.id===s.plan)).length;
+  const avgPerSub = pricedSubsCount ? Math.round(allTimeRevenue/pricedSubsCount) : 0;
 
   // ─── فلترة وبحث الاشتراكات ───
   const filteredSubs = subs.filter(s=>{
@@ -666,7 +704,8 @@ function AdminPanel({user, onBack}) {
       || (subFilterStatus==="active"&&isActive)
       || (subFilterStatus==="available"&&isAvailable)
       || (subFilterStatus==="expired"&&isExpired)
-      || (subFilterStatus==="soon"&&isActive&&days<=3);
+      || (subFilterStatus==="soon"&&isActive&&days<=3)
+      || (subFilterStatus==="usage_inactive"&&isActive&&getUsageInfo(s).inactive);
     return matchesSearch&&matchesStatus;
   }).sort((a,b)=>{
     const da=daysLeft(a.expiresAt), dbl=daysLeft(b.expiresAt);
@@ -695,6 +734,7 @@ function AdminPanel({user, onBack}) {
         <div className="tabs" style={{marginBottom:16}}>
           <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
           <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
+          <button className={`tab${tab==="revenue"?" on":""}`} onClick={()=>setTab("revenue")}>📈 الإيرادات</button>
         </div>
 
         {tab==="subs"&&(
@@ -707,6 +747,7 @@ function AdminPanel({user, onBack}) {
                 {i:"🔓",v:availableCount,l:"متاح",c:"var(--gold)"},
                 {i:"❌",v:expiredCount,l:"منتهي",c:"var(--err)"},
                 {i:"⏰",v:expiringSoon.length,l:"ينتهي قريباً (≤3 أيام)",c:"var(--warn)"},
+                {i:"😴",v:inactiveUsageCount,l:"لا يستخدم التطبيق",c:"var(--err)"},
               ].map((s,i)=>(
                 <div key={i} className="sc">
                   <div className="si">{s.i}</div>
@@ -714,12 +755,6 @@ function AdminPanel({user, onBack}) {
                   <div className="sl2">{s.l}</div>
                 </div>
               ))}
-            </div>
-
-            {/* رسم بياني للإيرادات الشهرية */}
-            <div className="revenue-section">
-              <h3>📈 الإيرادات الشهرية (آخر 6 أشهر)</h3>
-              <RevenueChart data={getMonthlyRevenue(subs,6)}/>
             </div>
 
             {/* تنبيهات الاشتراكات القريبة من الانتهاء */}
@@ -760,6 +795,7 @@ function AdminPanel({user, onBack}) {
                 <option value="available">🔓 متاح ({availableCount})</option>
                 <option value="expired">❌ منتهي ({expiredCount})</option>
                 <option value="soon">⏰ ينتهي قريباً ({expiringSoon.length})</option>
+                <option value="usage_inactive">😴 لا يستخدم التطبيق ({inactiveUsageCount})</option>
               </select>
               <select className="fs" value={subSortBy} onChange={e=>setSubSortBy(e.target.value)}>
                 <option value="expiry_asc">📅 الأقرب للانتهاء أولاً</option>
@@ -774,6 +810,7 @@ function AdminPanel({user, onBack}) {
               const isExpired=days<=0;
               const isFree=!s.usedBy&&!isExpired;
               const aff=affiliates.find(a=>a.code===s.affiliateCode);
+              const usage=getUsageInfo(s);
               return(
                 <div key={s.id} className="sub-card">
                   <div className="sub-card-header">
@@ -817,6 +854,7 @@ function AdminPanel({user, onBack}) {
                   </div>
                   <div className="sub-meta" style={{marginTop:8}}>
                     📅 ينتهي: {fmt(s.expiresAt)} {days>0?`(${days} يوم)`:""}<br/>
+                    {usage.label&&<><span style={{color:usage.color}}>{usage.label}</span><br/></>}
                     {s.clientPhone&&<><span>📱 {s.clientPhone}</span><br/></>}
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
@@ -825,6 +863,48 @@ function AdminPanel({user, onBack}) {
                 </div>
               );
             })}
+          </>
+        )}
+
+        {tab==="revenue"&&(
+          <>
+            <div className="stats">
+              {[
+                {i:"💰",v:`$${allTimeRevenue.toLocaleString()}`,l:"إجمالي الإيرادات (كل الوقت)",c:"var(--gold)"},
+                {i:"📅",v:`$${thisMonthRevenue.toLocaleString()}`,l:"إيرادات هذا الشهر",c:"var(--ok)"},
+                {i:"📊",v:`$${avgPerSub.toLocaleString()}`,l:"متوسط قيمة الكود"},
+              ].map((s,i)=>(
+                <div key={i} className="sc">
+                  <div className="si">{s.i}</div>
+                  <div className="sv" style={s.c?{color:s.c}:{}}>{s.v}</div>
+                  <div className="sl2">{s.l}</div>
+                </div>
+              ))}
+            </div>
+            <div className="revenue-section">
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}>
+                <h3 style={{marginBottom:0}}>📈 الإيرادات الشهرية</h3>
+                <div style={{display:"flex",gap:6}}>
+                  <button className={`plan-btn${revMonths===6?" on":""}`} style={{flex:"none",padding:"5px 12px",fontSize:12}} onClick={()=>setRevMonths(6)}>6 أشهر</button>
+                  <button className={`plan-btn${revMonths===12?" on":""}`} style={{flex:"none",padding:"5px 12px",fontSize:12}} onClick={()=>setRevMonths(12)}>12 شهر</button>
+                </div>
+              </div>
+              <RevenueChart data={getMonthlyRevenue(subs,revMonths)}/>
+            </div>
+            <div className="revenue-section">
+              <h3>🧾 توزيع الإيرادات حسب الباقة</h3>
+              {PLANS.map(p=>{
+                const planSubs=subs.filter(s=>s.plan===p.id);
+                const planRevenue=planSubs.length*p.price;
+                return(
+                  <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+                    <span style={{fontSize:13,color:"var(--gray2)"}}>{p.label} <span style={{color:"var(--gray)",fontSize:11}}>(${p.price})</span></span>
+                    <span style={{fontSize:13,color:"var(--white)"}}>{planSubs.length} كود</span>
+                    <span style={{fontSize:13,fontWeight:700,color:"var(--gold)"}}>${planRevenue.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
 
