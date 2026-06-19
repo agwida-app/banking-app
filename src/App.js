@@ -5,8 +5,8 @@ import {
   signOut, onAuthStateChanged, sendPasswordResetEmail,
 } from "firebase/auth";
 import {
-  collection, addDoc, updateDoc, deleteDoc, getDoc, setDoc,
-  doc, query, where, orderBy, serverTimestamp, onSnapshot
+  collection, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc,
+  doc, query, where, orderBy, limit, serverTimestamp, onSnapshot
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
@@ -287,6 +287,19 @@ function getUsageInfo(sub) {
   return { label: `🔴 غير نشط منذ ${sd} يوم`, color: "var(--err)", inactive: true, days: sd };
 }
 
+// ─── تجهيز البيانات للنسخة الاحتياطية (تحويل Timestamp إلى نص) ──
+function serializeForBackup(obj) {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "object" && typeof obj.toDate === "function") return obj.toDate().toISOString();
+  if (Array.isArray(obj)) return obj.map(serializeForBackup);
+  if (typeof obj === "object") {
+    const out = {};
+    for (const k in obj) out[k] = serializeForBackup(obj[k]);
+    return out;
+  }
+  return obj;
+}
+
 // ─── إحصائيات الإيرادات الشهرية ─────────────────────────────
 function getMonthlyRevenue(subs, monthsBack = 6) {
   const now = new Date();
@@ -513,6 +526,16 @@ function AdminPanel({user, onBack}) {
   const [subSortBy,setSubSortBy]=useState("expiry_asc");
   const [revMonths,setRevMonths]=useState(6);
 
+  // ─── سجل النشاط ───
+  const [activityLog,setActivityLog]=useState([]);
+  const logActivity=async(action,description)=>{
+    try{
+      await addDoc(collection(db,"activityLog"),{
+        action,description,performedBy:user.email,performedByUid:user.uid,createdAt:serverTimestamp()
+      });
+    }catch(e){ /* لا نوقف العملية الأساسية إذا فشل تسجيل النشاط */ }
+  };
+
   // ─── تغيير كلمة مرور العميل ───
   const [pwModal,setPwModal]=useState(false);
   const [pwEmail,setPwEmail]=useState("");
@@ -542,6 +565,7 @@ function AdminPanel({user, onBack}) {
         setPwOk("✅ تم تغيير كلمة المرور بنجاح");
         navigator.clipboard.writeText(`البريد: ${pwEmail.trim()}\nكلمة المرور الجديدة: ${pwNew}`);
         notify("تم التغيير — تم نسخ البيانات للحافظة 📋");
+        logActivity("change_password",`تم تغيير كلمة مرور العميل: ${pwEmail.trim()}`);
         setTimeout(()=>{setPwModal(false);setPwEmail("");setPwNew("");setPwOk("");},2500);
       }else{
         setPwErr(data.error||"حدث خطأ غير متوقع");
@@ -555,12 +579,47 @@ function AdminPanel({user, onBack}) {
     const u1=onSnapshot(q1,snap=>setSubs(snap.docs.map(d=>({id:d.id,...d.data()}))));
     const q2=query(collection(db,"affiliates"),orderBy("createdAt","desc"));
     const u2=onSnapshot(q2,snap=>setAff(snap.docs.map(d=>({id:d.id,...d.data()}))));
-    return()=>{u1();u2();};
+    const q3=query(collection(db,"activityLog"),orderBy("createdAt","desc"),limit(150));
+    const u3=onSnapshot(q3,snap=>setActivityLog(snap.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
+    return()=>{u1();u2();u3();};
   },[]);
 
   const genCode=()=>{
     const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
+  };
+
+  const exportFullBackup=async()=>{
+    setSaving(true);
+    try{
+      const allClientsSnap=await getDocs(collection(db,"clients"));
+      const allClients=allClientsSnap.docs.map(d=>({id:d.id,...d.data()}));
+      const backup=serializeForBackup({
+        exportedAt:new Date().toISOString(),
+        exportedBy:user.email,
+        subscriptions:subs,
+        affiliates:affiliates,
+        affiliatePayments:payments,
+        activityLog:activityLog,
+        clients:allClients,
+      });
+      const json=JSON.stringify(backup,null,2);
+      const blob=new Blob([json],{type:"application/json"});
+      const filename=`agwida_backup_${new Date().toISOString().split("T")[0]}.json`;
+      if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
+        const file=new File([blob],filename,{type:"application/json"});
+        navigator.share({files:[file],title:"نسخة احتياطية"}).catch(()=>{
+          const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+        });
+      }else{
+        const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+      }
+      notify(`تم تصدير النسخة الاحتياطية ✅ (${allClients.length} عميل، ${subs.length} كود)`);
+      logActivity("backup",`تم تصدير نسخة احتياطية كاملة (${allClients.length} عميل، ${subs.length} كود اشتراك)`);
+    }catch(e){
+      notify("فشل التصدير: "+e.message+" — تأكد من صلاحيات Firestore","err");
+    }
+    setSaving(false);
   };
 
   const createSub=async()=>{
@@ -587,6 +646,7 @@ function AdminPanel({user, onBack}) {
         createdBy:user.uid,createdAt:serverTimestamp(),notes:form.notes,devices:{}
       });
       notify("تم إنشاء الكود ✅");
+      logActivity("create_code",`تم إنشاء كود اشتراك جديد: ${codeKey} (${planLabel})`);
       setModal(null);setForm({code:"",plan:"3m",customDays:"",maxClients:500,notes:"",affiliateCode:"",clientPhone:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
@@ -607,6 +667,7 @@ function AdminPanel({user, onBack}) {
         paidReferrals:0,createdAt:serverTimestamp()
       });
       notify(`تم إنشاء كود المسوّق: ${code} ✅`);
+      logActivity("create_affiliate",`تم إنشاء مسوّق جديد: ${affForm.name} (${code})`);
       setModal(null);setAffForm({name:"",handle:"",code:"",commissionPct:10,notes:""});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
@@ -639,6 +700,7 @@ function AdminPanel({user, onBack}) {
       });
       await updateDoc(doc(db,"affiliates",aff.id),{totalPaid:newTotal});
       notify("تم تسجيل الدفعة ✅");
+      logActivity("add_payment",`تم تسجيل دفعة $${payForm.amount} للمسوّق ${aff.name}`);
       setPayModal(null);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});
     }catch(e){notify("خطأ: "+e.message,"err");}
     setSaving(false);
@@ -648,11 +710,15 @@ function AdminPanel({user, onBack}) {
     if(!window.confirm("حذف هذه الدفعة؟"))return;
     await deleteDoc(doc(db,`affiliates/${affId}/payments`,payId));
     notify("تم الحذف","err");
+    const aff=affiliates.find(a=>a.id===affId);
+    logActivity("delete_payment",`تم حذف دفعة للمسوّق ${aff?.name||affId}`);
   };
 
   const deleteSub=async(id)=>{
     if(!window.confirm("هل أنت متأكد؟"))return;
+    const sub=subs.find(s=>s.id===id);
     await deleteDoc(doc(db,"subscriptions",id));notify("تم الحذف","err");
+    logActivity("delete_code",`تم حذف كود الاشتراك: ${sub?.code||id}`);
   };
 
   const renewSub=async(sub)=>{
@@ -662,6 +728,7 @@ function AdminPanel({user, onBack}) {
     if(!plan){alert("باقة غير صحيحة");return;}
     await updateDoc(doc(db,"subscriptions",sub.id),{expiresAt:plan.days?addDays(plan.days):addMonths(plan.months),plan:planId,planLabel:plan.label});
     notify("تم التجديد ✅");
+    logActivity("renew_code",`تم تجديد الكود ${sub.code||sub.id} بباقة ${plan.label}`);
   };
 
   // ─── إحصائيات الاشتراكات ───
@@ -728,6 +795,7 @@ function AdminPanel({user, onBack}) {
             {tab==="subs"&&<button className="bsv" onClick={()=>{setForm(f=>({...f,code:genCode()}));setModal("sub");}}>＋ كود جديد</button>}
             {tab==="affiliates"&&<button className="bsv" onClick={()=>setModal("aff")}>＋ مسوّق جديد</button>}
             <button className="ab-btn gold" onClick={()=>{setPwModal(true);setPwErr("");setPwOk("");setPwEmail("");setPwNew("");}}>🔑 تغيير كلمة مرور عميل</button>
+            <button className="ab-btn" onClick={exportFullBackup} disabled={saving}>{saving?<span className="spin"/>:"💾 نسخة احتياطية"}</button>
             <button className="bs" onClick={onBack}>← رجوع</button>
           </div>
         </div>
@@ -735,6 +803,7 @@ function AdminPanel({user, onBack}) {
           <button className={`tab${tab==="subs"?" on":""}`} onClick={()=>setTab("subs")}>🔑 الاشتراكات</button>
           <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
           <button className={`tab${tab==="revenue"?" on":""}`} onClick={()=>setTab("revenue")}>📈 الإيرادات</button>
+          <button className={`tab${tab==="log"?" on":""}`} onClick={()=>setTab("log")}>📜 السجل</button>
         </div>
 
         {tab==="subs"&&(
@@ -842,6 +911,7 @@ function AdminPanel({user, onBack}) {
                       if(val<500){alert("الحد الأدنى هو 500 عميل");return;}
                       await updateDoc(doc(db,"subscriptions",s.id),{maxClients:val});
                       notify(`تم تحديث الحد إلى ${val} عميل ✅`);
+                      logActivity("update_limit",`تم تحديث حد العملاء للكود ${s.code||s.id} إلى ${val}`);
                     }}>👥 {s.maxClients||"∞"} عميل</button>
                     <button className="ab-btn" onClick={async()=>{
                       const devs=Object.values(s.devices||{});
@@ -849,6 +919,7 @@ function AdminPanel({user, onBack}) {
                       if(!window.confirm(`📱 الأجهزة المسجّلة (${devs.length}/7)\n${devList}\n\nهل تريد إعادة ضبط جميع الأجهزة؟`))return;
                       await updateDoc(doc(db,"subscriptions",s.id),{devices:{}});
                       notify("تم إعادة ضبط الأجهزة ✅");
+                      logActivity("reset_devices",`تم إعادة ضبط أجهزة الكود ${s.code||s.id}`);
                     }}>📱 {Object.keys(s.devices||{}).length}/7</button>
                     <button className="ab-btn red" onClick={()=>deleteSub(s.id)}>🗑 حذف</button>
                   </div>
@@ -931,7 +1002,7 @@ function AdminPanel({user, onBack}) {
                       <button className="ab-btn gold" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
                       <button className="ab-btn green" onClick={()=>{setPayModal(a);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});}}>💰 دفعة</button>
                       <button className="ab-btn" onClick={()=>setSelAff(selAff?.id===a.id?null:a)}>📜 السجل ({affPays.length})</button>
-                      <button className="ab-btn red" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");}}>🗑 حذف</button>
+                      <button className="ab-btn red" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");logActivity("delete_affiliate",`تم حذف المسوّق: ${a.name} (${a.code})`);}}>🗑 حذف</button>
                     </div>
                   </div>
                   <div className="sub-meta">
@@ -960,6 +1031,29 @@ function AdminPanel({user, onBack}) {
                       <div style={{marginTop:8,padding:"8px 12px",background:"rgba(201,168,76,.06)",borderRadius:8,fontSize:12,fontWeight:700,color:"var(--gold)"}}>المجموع: ${totalPaid.toLocaleString()}</div>
                     </div>
                   )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {tab==="log"&&(
+          <>
+            <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
+              📜 آخر <strong style={{color:"var(--white)"}}>{activityLog.length}</strong> عملية مسجّلة (الأحدث أولاً)
+            </div>
+            {activityLog.length===0&&<div className="emp"><div className="ei">📜</div><div className="et2">لا يوجد نشاط مسجّل بعد — سيظهر هنا كل إنشاء/حذف/تجديد تقوم به</div></div>}
+            {activityLog.map(l=>{
+              const icons={create_code:"🆕",delete_code:"🗑",renew_code:"🔄",create_affiliate:"🤝",delete_affiliate:"🗑",add_payment:"💰",delete_payment:"🗑",change_password:"🔑",update_limit:"👥",reset_devices:"📱",backup:"💾"};
+              return(
+                <div key={l.id} className="sub-card" style={{padding:"13px 16px"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                    <span style={{fontSize:17,flexShrink:0}}>{icons[l.action]||"📋"}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,color:"var(--white)"}}>{l.description}</div>
+                      <div style={{fontSize:11,color:"var(--gray)",marginTop:3}}>👤 {l.performedBy||"—"} · {fmt(l.createdAt)}</div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -1352,7 +1446,23 @@ function AuthScreen({onLogin}) {
     if(!email.trim()||!pass.trim()){setErr("يرجى ملء جميع الحقول");setLoad(false);return;}
     try{
       if(tab==="login"){const u=await signInWithEmailAndPassword(auth,email.trim(),pass);onLogin(u.user);}
-      else{const u=await createUserWithEmailAndPassword(auth,email.trim(),pass);onLogin(u.user);}
+      else{
+        const u=await createUserWithEmailAndPassword(auth,email.trim(),pass);
+        // ─── منح يوم تجربة مجاني تلقائي لحساب جديد فقط ───
+        try{
+          const trialExp=new Date();
+          trialExp.setDate(trialExp.getDate()+1);
+          await setDoc(doc(db,"subscriptions",`TRIAL_${u.user.uid}`),{
+            code:`TRIAL_${u.user.uid}`,plan:"trial",planLabel:"يوم مجاني (تجربة)",
+            maxClients:500,expiresAt:trialExp,
+            usedBy:u.user.uid,usedAt:serverTimestamp(),usedByEmail:u.user.email,
+            affiliateCode:null,clientPhone:null,
+            createdBy:"system_trial",createdAt:serverTimestamp(),
+            notes:"تجربة مجانية تلقائية عند التسجيل",devices:{}
+          });
+        }catch(trialErr){ /* لا نوقف تسجيل الدخول إذا فشل إنشاء التجربة المجانية */ }
+        onLogin(u.user);
+      }
     }catch(e){
       const m={"auth/invalid-credential":"البريد أو كلمة المرور غير صحيحة",
         "auth/email-already-in-use":"البريد مسجل مسبقاً","auth/weak-password":"كلمة المرور قصيرة (6+ أحرف)",
@@ -1434,6 +1544,7 @@ export default function App() {
   const [sortBy,setSortBy]=useState("newest");
   const [synced,setSynced]=useState(false);
   const [showAdmin,setShowAdmin]=useState(false);
+  const [selectedIds,setSelectedIds]=useState(new Set());
   const addRef=useRef(null);
   const editRef=useRef(null);
   const isAdmin=user?.uid===ADMIN_UID;
@@ -1550,6 +1661,31 @@ export default function App() {
   const totalAmt=clients.filter(c=>!c.isSold).reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
   const bankNames=[...new Set([...BANKS.filter(b=>b!=="مصرف آخر"),...clients.map(c=>c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType).filter(Boolean)])];
 
+  const toggleSelect=useCallback((id)=>{
+    setSelectedIds(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+  },[]);
+  const allFilteredSelected = filtered.length>0 && filtered.every(c=>selectedIds.has(c.id));
+  const toggleSelectAll=()=>{
+    setSelectedIds(prev=>{
+      const n=new Set(prev);
+      if(allFilteredSelected){filtered.forEach(c=>n.delete(c.id));}
+      else{filtered.forEach(c=>n.add(c.id));}
+      return n;
+    });
+  };
+  const bulkDeleteSelected=async()=>{
+    if(!canWrite){notify("اشتراكك منتهي","err");return;}
+    if(selectedIds.size===0)return;
+    if(!window.confirm(`حذف ${selectedIds.size} عميل؟ لا يمكن التراجع عن هذا الإجراء.`))return;
+    setSaving(true);
+    try{
+      await Promise.all([...selectedIds].map(id=>deleteDoc(doc(db,"clients",id))));
+      notify(`تم حذف ${selectedIds.size} عميل 🗑`,"err");
+      setSelectedIds(new Set());
+    }catch(e){notify("خطأ: "+e.message,"err");}
+    setSaving(false);
+  };
+
   if(!ready)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a1628"}}><style>{CSS}</style><span className="spin spin2" style={{width:36,height:36,borderWidth:3}}/></div>);
   if(!user)return <AuthScreen onLogin={u=>setUser(u)}/>;
   if(subStatus==="none")return <ActivationScreen user={user} onActivated={()=>setSubStatus(null)}/>;
@@ -1641,6 +1777,17 @@ export default function App() {
                 {canWrite&&!atLimit&&<button className="add-btn" onClick={()=>{setSel(null);setModal("add");}}>＋ إضافة</button>}
               </div>
             </div>
+            {selectedIds.size>0&&(
+              <div className="mw" style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <span>✅ تم تحديد {selectedIds.size} عميل</span>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button className="eb" onClick={()=>generatePDF(clients.filter(c=>selectedIds.has(c.id)))}>🖨️ PDF</button>
+                  <button className="eb" onClick={()=>exportCSV(clients.filter(c=>selectedIds.has(c.id)))}>📤 CSV</button>
+                  {canWrite&&<button className="eb" style={{color:"var(--err)",borderColor:"rgba(231,76,60,.3)"}} onClick={bulkDeleteSelected} disabled={saving}>🗑 حذف المحدد</button>}
+                  <button className="ib" onClick={()=>setSelectedIds(new Set())}>✕ إلغاء</button>
+                </div>
+              </div>
+            )}
             <div className="fr">
               <div className="sw" style={{flex:2,minWidth:160}}>
                 <span className="si2">🔍</span>
@@ -1668,12 +1815,13 @@ export default function App() {
               {filtered.length===0
                 ?<div className="emp"><div className="ei">📋</div><div className="et2">{!clients.length?"اضغط + لإضافة أول عميل":"لا توجد نتائج"}</div></div>
                 :<table>
-                  <thead><tr><th>الاسم</th><th className="hm">المصرف</th><th className="hm">المبلغ</th><th>البطاقة</th><th></th></tr></thead>
+                  <thead><tr><th style={{width:30}}><input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll}/></th><th>الاسم</th><th className="hm">المصرف</th><th className="hm">المبلغ</th><th>البطاقة</th><th></th></tr></thead>
                   <tbody>
                     {filtered.map(c=>{
                       const bank=c.bankType==="مصرف آخر"?c.bankTypeOther||"مصرف آخر":c.bankType;
                       return(
                         <tr key={c.id} className={c.isSold?"sold-row":""}>
+                          <td><input type="checkbox" checked={selectedIds.has(c.id)} onChange={()=>toggleSelect(c.id)}/></td>
                           <td className="nm">{c.name}</td>
                           <td className="hm" style={{fontSize:12}}>{bank}</td>
                           <td className="am hm">{c.amount?`${parseFloat(c.amount).toLocaleString()} ${c.currency}`:"—"}</td>
