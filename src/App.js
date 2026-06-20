@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile,
+  reauthenticateWithCredential, EmailAuthProvider, deleteUser,
 } from "firebase/auth";
 import {
   collection, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc,
@@ -58,11 +59,11 @@ const CSS = `
   --border:rgba(201,168,76,0.2);--card:rgba(255,255,255,0.03);
 }
 .light{
-  --bg:#f0f4fa;--navy2:#ffffff;--navy3:#e8eef8;
-  --gold:#9a6f00;--gold2:#b8860b;
-  --white:#111827;--gray:#4b5563;--gray2:#1f2937;
+  --bg:#f1f4f9;--navy2:#fcfdff;--navy3:#e9eef6;
+  --gold:#8a6a1c;--gold2:#b3893a;
+  --white:#1b2433;--gray:#5b6472;--gray2:#2b3344;
   --ok:#166534;--err:#991b1b;--warn:#92400e;--sold:#6b7280;
-  --border:rgba(154,111,0,0.2);--card:rgba(0,0,0,0.04);
+  --border:rgba(30,41,59,.09);--card:rgba(15,23,42,.032);
 }
 html,body,#root{font-family:'Tajawal',sans-serif;direction:rtl;min-height:100%}
 body{background:var(--bg);color:var(--white);min-height:100vh;transition:background .25s,color .25s}
@@ -242,6 +243,28 @@ textarea.fi{resize:none}
 .rev-bar-label{font-size:10px;color:var(--gray);margin-top:2px;white-space:nowrap}
 .light .rev-bar-track{background:rgba(0,0,0,.05)}
 @media print{body{background:#fff!important;color:#000!important}}
+
+/* ─── سلاسة الاستخدام: انتقالات شاملة، حركة دخول للنوافذ، تفاعل لمسي ─── */
+*{transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease}
+.bp,.bs,.bsv,.add-btn,.eb,.ib,.ab-btn,.plan-btn,.tab,.mb{transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}
+.bp:active,.bsv:active,.add-btn:active,.plan-btn:active{transform:scale(.97)}
+.ab-btn:active,.eb:active,.ib:active,.bs:active{transform:scale(.96)}
+.sub-card,.sc{transition:background-color .18s ease,border-color .18s ease,box-shadow .2s ease,transform .2s ease}
+.sub-card:hover,.sc:hover{box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.light .sub-card:hover,.light .sc:hover{box-shadow:0 6px 18px rgba(15,23,42,.08)}
+.ni{transition:background-color .15s ease,color .15s ease}
+.ni:hover{background:rgba(255,255,255,.05)}
+.light .ni:hover{background:rgba(15,23,42,.045)}
+.tw tbody tr{transition:background-color .15s ease}
+.tw tbody tr:hover td{background:rgba(201,168,76,.05)}
+.fi,.fs{transition:border-color .15s ease,box-shadow .15s ease}
+.fi:focus,.fs:focus{box-shadow:0 0 0 3px rgba(201,168,76,.15)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.dov{animation:fadeIn .16s ease}
+.drawer{animation:slideUp .22s cubic-bezier(.16,1,.3,1)}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 `;
 
 function fmt(ts) {
@@ -479,7 +502,7 @@ function ActivationScreen({user, onActivated}) {
       if(hasBonus){
         const newExp=new Date(exp);
         newExp.setMonth(newExp.getMonth()+1);
-        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,expiresAt:newExp,planLabel:(data.planLabel||"")+" + شهر مجاني 🎁"});
+        await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email,expiresAt:newExp,planLabel:(data.planLabel||"")+" + شهر مجاني 🎁",affiliateCode:refTrimmed});
         setOk("تم التفعيل! حصلت على شهر مجاني إضافي 🎁");
       } else {
         await updateDoc(ref,{usedBy:user.uid,usedAt:serverTimestamp(),usedByEmail:user.email});
@@ -521,6 +544,7 @@ function ActivationScreen({user, onActivated}) {
 // ─── ADMIN PANEL ──────────────────────────────────────────────
 function AdminPanel({user, onBack}) {
   const [subs,setSubs]=useState([]);
+  const [registeredUsers,setRegisteredUsers]=useState([]);
   const [affiliates,setAff]=useState([]);
   const [tab,setTab]=useState("subs");
   const [modal,setModal]=useState(null);
@@ -546,7 +570,45 @@ function AdminPanel({user, onBack}) {
     }catch(e){ /* لا نوقف العملية الأساسية إذا فشل تسجيل النشاط */ }
   };
 
-  // ─── تغيير كلمة مرور العميل ───
+  // ─── حذف الحساب الذاتي (يتطلب تأكيد بكلمة المرور) ───
+  const [delAccModal,setDelAccModal]=useState(false);
+  const [delPassword,setDelPassword]=useState("");
+  const [delErr,setDelErr]=useState("");
+  const [delLoad,setDelLoad]=useState(false);
+
+  const deleteMyAccount=async()=>{
+    setDelErr("");
+    if(!delPassword.trim()){setDelErr("أدخل كلمة المرور للتأكيد");return;}
+    setDelLoad(true);
+    try{
+      // 1) إعادة المصادقة بكلمة المرور الحالية
+      const cred=EmailAuthProvider.credential(user.email,delPassword);
+      await reauthenticateWithCredential(auth.currentUser,cred);
+
+      // 2) حذف بيانات العملاء المرتبطة بالحساب
+      const clientsSnap=await getDocs(query(collection(db,"clients"),where("uid","==",user.uid)));
+      for(const d of clientsSnap.docs){ await deleteDoc(doc(db,"clients",d.id)); }
+
+      // 3) حذف اشتراكات الحساب
+      const subsSnap=await getDocs(query(collection(db,"subscriptions"),where("usedBy","==",user.uid)));
+      for(const d of subsSnap.docs){ await deleteDoc(doc(db,"subscriptions",d.id)); }
+
+      // 4) حذف حساب المصادقة نفسه
+      await deleteUser(auth.currentUser);
+      // onAuthStateChanged يتولّى إعادة التوجيه لشاشة الدخول تلقائياً
+    }catch(e){
+      const m={
+        "auth/wrong-password":"كلمة المرور غير صحيحة",
+        "auth/invalid-credential":"كلمة المرور غير صحيحة",
+        "auth/too-many-requests":"محاولات كثيرة، حاول لاحقاً",
+        "auth/requires-recent-login":"يرجى تسجيل الخروج والدخول مرة أخرى ثم إعادة المحاولة"
+      };
+      setDelErr(m[e.code]||"حدث خطأ، تأكد من كلمة المرور وحاول مرة أخرى");
+    }
+    setDelLoad(false);
+  };
+
+
   const [pwModal,setPwModal]=useState(false);
   const [pwEmail,setPwEmail]=useState("");
   const [pwNew,setPwNew]=useState("");
@@ -591,7 +653,9 @@ function AdminPanel({user, onBack}) {
     const u2=onSnapshot(q2,snap=>setAff(snap.docs.map(d=>({id:d.id,...d.data()}))));
     const q3=query(collection(db,"activityLog"),orderBy("createdAt","desc"),limit(150));
     const u3=onSnapshot(q3,snap=>setActivityLog(snap.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
-    return()=>{u1();u2();u3();};
+    const q4=query(collection(db,"registeredUsers"),orderBy("createdAt","desc"));
+    const u4=onSnapshot(q4,snap=>setRegisteredUsers(snap.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
+    return()=>{u1();u2();u3();u4();};
   },[]);
 
   const genCode=()=>{
@@ -814,6 +878,7 @@ function AdminPanel({user, onBack}) {
           <button className={`tab${tab==="affiliates"?" on":""}`} onClick={()=>setTab("affiliates")}>🤝 المسوّقون</button>
           <button className={`tab${tab==="revenue"?" on":""}`} onClick={()=>setTab("revenue")}>📈 الإيرادات</button>
           <button className={`tab${tab==="log"?" on":""}`} onClick={()=>setTab("log")}>📜 السجل</button>
+          <button className={`tab${tab==="users"?" on":""}`} onClick={()=>setTab("users")}>👤 المستخدمون</button>
         </div>
 
         {tab==="subs"&&(
@@ -1008,6 +1073,12 @@ function AdminPanel({user, onBack}) {
               const refSubs=subs.filter(s=>s.affiliateCode===a.code);
               const affPays=payments[a.id]||[];
               const totalPaid=affPays.reduce((s,p)=>s+(p.amount||0),0);
+              const totalEarned=refSubs.reduce((s,rs)=>{
+                const plan=PLANS.find(p=>p.id===rs.plan);
+                const price=plan?plan.price:0;
+                return s+Math.round(price*(a.commissionPct||COMMISSION_PCT)/100*100)/100;
+              },0);
+              const owed=Math.max(0,Math.round((totalEarned-totalPaid)*100)/100);
               return(
                 <div key={a.id} className="sub-card">
                   <div className="sub-card-header">
@@ -1017,18 +1088,31 @@ function AdminPanel({user, onBack}) {
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                       <button className="ab-btn gold" onClick={()=>{navigator.clipboard.writeText(a.code);notify("تم نسخ كود الإحالة ✅");}}>📋 {a.code}</button>
-                      <button className="ab-btn green" onClick={()=>{setPayModal(a);setPayForm({amount:"",note:"",date:new Date().toISOString().split("T")[0]});}}>💰 دفعة</button>
                       <button className="ab-btn" onClick={()=>setSelAff(selAff?.id===a.id?null:a)}>📜 السجل ({affPays.length})</button>
                       <button className="ab-btn red" onClick={async()=>{if(!window.confirm("حذف؟"))return;await deleteDoc(doc(db,"affiliates",a.id));notify("تم الحذف","err");logActivity("delete_affiliate",`تم حذف المسوّق: ${a.name} (${a.code})`);}}>🗑 حذف</button>
                     </div>
                   </div>
                   <div className="sub-meta">
                     💹 العمولة: <strong style={{color:"var(--gold)"}}>{a.commissionPct}%</strong> •
-                    📊 الإحالات: <strong style={{color:"var(--white)"}}>{a.totalReferrals||0}</strong> •
-                    💵 المدفوع: <strong style={{color:"var(--ok)"}}>{totalPaid.toLocaleString()} $</strong><br/>
-                    {refSubs.length>0&&<>📋 {refSubs.map(s=><span key={s.id} style={{fontSize:10,background:"rgba(201,168,76,.1)",padding:"1px 6px",borderRadius:10,marginLeft:4,color:"var(--gold)"}}>{s.code}</span>)}<br/></>}
+                    📊 الإحالات: <strong style={{color:"var(--white)"}}>{refSubs.length}</strong> •
+                    💵 المدفوع: <strong style={{color:"var(--ok)"}}>{totalPaid.toLocaleString()} $</strong> •
+                    🟡 المستحق: <strong style={{color:owed>0?"var(--warn)":"var(--ok)"}}>{owed.toLocaleString()} $</strong><br/>
                     {a.notes&&<>📝 {a.notes}</>}
                   </div>
+                  {refSubs.length>0&&(
+                    <div style={{marginTop:10,borderTop:"1px solid var(--border)",paddingTop:10}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"var(--gold)",marginBottom:6}}>👥 العملاء المُحالون ({refSubs.length})</div>
+                      {refSubs.map(rs=>{
+                        const plan=PLANS.find(p=>p.id===rs.plan);
+                        return(
+                          <div key={rs.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+                            <span style={{color:"var(--white)"}}>✉️ {rs.usedByEmail||"—"}</span>
+                            <span style={{color:"var(--gold)",fontWeight:700}}>{plan?`$${plan.price}`:(rs.planLabel||"—")}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {selAff?.id===a.id&&(
                     <div style={{marginTop:12,borderTop:"1px solid var(--border)",paddingTop:12}}>
                       <div style={{fontSize:12,fontWeight:700,color:"var(--gold)",marginBottom:8}}>📜 سجل الدفعات</div>
@@ -1070,6 +1154,33 @@ function AdminPanel({user, onBack}) {
                       <div style={{fontSize:13,color:"var(--white)"}}>{l.description}</div>
                       <div style={{fontSize:11,color:"var(--gray)",marginTop:3}}>👤 {l.performedBy||"—"} · {fmt(l.createdAt)}</div>
                     </div>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {tab==="users"&&(
+          <>
+            <div style={{marginBottom:16,fontSize:13,color:"var(--gray2)"}}>
+              👤 إجمالي <strong style={{color:"var(--white)"}}>{registeredUsers.length}</strong> مستخدم مسجّل (الأحدث أولاً)
+            </div>
+            {registeredUsers.length===0&&<div className="emp"><div className="ei">👤</div><div className="et2">لا يوجد مستخدمون مسجّلون بعد — سيظهر هنا كل من يسجّل حساباً جديداً في التطبيق</div></div>}
+            {registeredUsers.map(ru=>{
+              const userSub=subs.find(s=>s.usedBy===ru.uid);
+              const isExpired=userSub&&userSub.expiresAt&&userSub.expiresAt.toDate&&userSub.expiresAt.toDate()<new Date();
+              return(
+                <div key={ru.id} className="sub-card" style={{padding:"13px 16px"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,color:"var(--white)",fontWeight:700}}>{ru.name||"بدون اسم"}</div>
+                      <div style={{fontSize:12,color:"var(--gray2)",marginTop:3}}>✉️ {ru.email}</div>
+                      <div style={{fontSize:11,color:"var(--gray)",marginTop:3}}>🗓 سجّل في {fmt(ru.createdAt)}</div>
+                    </div>
+                    {userSub
+                      ?(isExpired?<span className="status-chip chip-exp">منتهي</span>:<span className="status-chip chip-ok">نشط</span>)
+                      :<span className="status-chip chip-free">بدون اشتراك</span>}
                   </div>
                 </div>
               );
@@ -1126,6 +1237,37 @@ function AdminPanel({user, onBack}) {
                 <button className="bs" onClick={()=>setPwModal(false)}>إلغاء</button>
                 <button className="bsv" onClick={changeClientPassword} disabled={pwLoad}>
                   {pwLoad?<span className="spin"/>:"🔑 تغيير ونسخ"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: حذف الحساب الذاتي */}
+        {delAccModal&&(
+          <div className="dov" onClick={e=>e.target===e.currentTarget&&!delLoad&&setDelAccModal(false)}>
+            <div className="drawer" style={{maxHeight:460}}>
+              <div className="dhead">
+                <span className="dt" style={{color:"var(--err)"}}>🗑️ حذف الحساب نهائياً</span>
+                <button className="dc" onClick={()=>setDelAccModal(false)} disabled={delLoad}>✕</button>
+              </div>
+              <div className="dbody">
+                <div className="me" style={{marginBottom:16,lineHeight:1.8}}>
+                  ⚠️ هذا الإجراء <strong>نهائي ولا يمكن التراجع عنه</strong>. سيتم حذف حسابك بالكامل، وجميع بيانات عملائك، وكل اشتراكاتك المرتبطة به فوراً.
+                </div>
+                <div className="fg">
+                  <label className="fl">أدخل كلمة المرور الحالية للتأكيد *</label>
+                  <input className="fi" type="password" placeholder="كلمة المرور"
+                    value={delPassword} onChange={e=>setDelPassword(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&!delLoad&&deleteMyAccount()}
+                    autoFocus/>
+                </div>
+                {delErr&&<div className="me">{delErr}</div>}
+              </div>
+              <div className="dfoot">
+                <button className="bs" onClick={()=>setDelAccModal(false)} disabled={delLoad}>إلغاء</button>
+                <button className="bsv" style={{background:"linear-gradient(135deg,var(--err),#ff6b6b)",color:"#fff"}} onClick={deleteMyAccount} disabled={delLoad||!delPassword.trim()}>
+                  {delLoad?<span className="spin"/>:"🗑️ تأكيد الحذف النهائي"}
                 </button>
               </div>
             </div>
@@ -1468,12 +1610,20 @@ function AuthScreen({onLogin}) {
       else{
         const u=await createUserWithEmailAndPassword(auth,email.trim(),pass);
         try{await updateProfile(u.user,{displayName:name.trim()});}catch{}
-        // ─── منح يوم تجربة مجاني تلقائي — مرة واحدة فقط لكل جهاز ───
+        // ─── حفظ بيانات المستخدم الجديد للعرض في لوحة المدير (بدون كلمة المرور إطلاقاً) ───
         try{
+          await setDoc(doc(db,"registeredUsers",u.user.uid),{
+            uid:u.user.uid,name:name.trim(),email:u.user.email,createdAt:serverTimestamp()
+          });
+        }catch{}
+        // ─── منح يوم تجربة مجاني تلقائي — حتى 3 مرات لكل جهاز ───
+        try{
+          const MAX_TRIALS_PER_DEVICE=3;
           const deviceId=getOrCreateDeviceId();
           const trialDeviceRef=doc(db,"usedTrialDevices",deviceId);
           const trialDeviceSnap=await getDoc(trialDeviceRef);
-          if(!trialDeviceSnap.exists()){
+          const prevCount=trialDeviceSnap.exists()?(trialDeviceSnap.data().count||0):0;
+          if(prevCount<MAX_TRIALS_PER_DEVICE){
             const trialExp=new Date();
             trialExp.setDate(trialExp.getDate()+1);
             await setDoc(doc(db,"subscriptions",`TRIAL_${u.user.uid}`),{
@@ -1485,9 +1635,13 @@ function AuthScreen({onLogin}) {
               notes:name.trim()||"تجربة مجانية تلقائية عند التسجيل",
               devices:{[deviceId]:{uid:u.user.uid,email:u.user.email,lastSeen:new Date().toISOString(),type:"تجربة مجانية"}}
             });
-            await setDoc(trialDeviceRef,{deviceId,firstEmail:u.user.email,firstUid:u.user.uid,createdAt:serverTimestamp()});
+            await setDoc(trialDeviceRef,{
+              deviceId,count:prevCount+1,
+              lastEmail:u.user.email,lastUid:u.user.uid,updatedAt:serverTimestamp(),
+              ...(prevCount===0?{firstEmail:u.user.email,firstUid:u.user.uid,createdAt:serverTimestamp()}:{})
+            },{merge:true});
           }
-          // إذا الجهاز سبق له استخدام يوم مجاني، لا يُنشأ اشتراك جديد، والحساب يدخل وضع "بدون اشتراك" العادي (يحتاج كود تفعيل)
+          // إذا الجهاز استنفذ 3 محاولات، لا يُنشأ اشتراك جديد، والحساب يدخل وضع "بدون اشتراك" العادي (يحتاج كود تفعيل)
         }catch(trialErr){ /* لا نوقف تسجيل الدخول إذا فشل التحقق أو إنشاء التجربة المجانية */ }
         onLogin(u.user);
       }
@@ -1760,6 +1914,7 @@ export default function App() {
           ))}
           {isAdmin&&<button className="ni" style={{marginTop:8,color:"var(--gold)"}} onClick={()=>{setShowAdmin(true);setBar(false);}}><span>🛡️</span>لوحة المدير</button>}
           <a href="https://wa.me/218945888844" target="_blank" rel="noopener noreferrer" className="ni" style={{marginTop:4,color:"#25D366",textDecoration:"none",display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,fontSize:13,fontWeight:500}}><span>📱</span>تواصل مع خدمة العملاء</a>
+          <button className="ni" style={{marginTop:4,color:"var(--err)"}} onClick={()=>{setDelAccModal(true);setDelPassword("");setDelErr("");setBar(false);}}><span>🗑️</span>حذف حسابي</button>
         </nav>
         <div className="su">
           <div className="su-a">{user.email[0].toUpperCase()}</div>
