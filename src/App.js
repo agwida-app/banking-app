@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  signOut, onAuthStateChanged, sendPasswordResetEmail,
+  signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile,
 } from "firebase/auth";
 import {
   collection, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc,
@@ -33,10 +33,10 @@ const BANKS = [
 
 const PLANS = [
   { id:"7d",  label:"7 أيام",  days:7,    price:5   },
-  { id:"1m",  label:"شهر",     months:1,  price:10  },
-  { id:"3m",  label:"3 أشهر",  months:3,  price:30  },
-  { id:"6m",  label:"6 أشهر",  months:6,  price:60  },
-  { id:"12m", label:"12 شهر",  months:12, price:100 },
+  { id:"1m",  label:"شهر",     months:1,  price:9,  priceLYD:80  },
+  { id:"3m",  label:"3 أشهر",  months:3,  price:20, priceLYD:200 },
+  { id:"6m",  label:"6 أشهر",  months:6,  price:50, priceLYD:400 },
+  { id:"12m", label:"سنة",     months:12, price:90, priceLYD:750 },
 ];
 const COMMISSION_PCT = 10;
 
@@ -298,6 +298,16 @@ function serializeForBackup(obj) {
     return out;
   }
   return obj;
+}
+
+// ─── معرّف الجهاز (لمنع تكرار اليوم المجاني بإيميلات متعددة) ───
+function getOrCreateDeviceId() {
+  let id = localStorage.getItem("deviceId");
+  if (!id) {
+    id = "dev_" + Math.random().toString(36).substr(2, 9) + "_" + Date.now().toString(36);
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
 }
 
 // ─── إحصائيات الإيرادات الشهرية ─────────────────────────────
@@ -929,7 +939,14 @@ function AdminPanel({user, onBack}) {
                     {s.clientPhone&&<><span>📱 {s.clientPhone}</span><br/></>}
                     {aff&&<><span style={{color:"var(--gold)"}}>🤝 مسوّق: {aff.name} ({s.affiliateCode})</span><br/></>}
                     {s.usedByEmail&&<>👤 {s.usedByEmail}<br/></>}
-                    {s.notes&&<span>📝 {s.notes}</span>}
+                    <span>📝 {s.notes||"بدون اسم"}</span>
+                    <button onClick={async()=>{
+                      const newNote=prompt("تعديل الملاحظة/اسم العميل:",s.notes||"");
+                      if(newNote===null)return;
+                      await updateDoc(doc(db,"subscriptions",s.id),{notes:newNote});
+                      notify("تم تحديث الملاحظة ✅");
+                      logActivity("edit_note",`تم تعديل ملاحظة الكود ${s.code||s.id} إلى "${newNote}"`);
+                    }} style={{background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",borderRadius:6,color:"var(--gold)",cursor:"pointer",padding:"1px 7px",fontSize:12,marginRight:6,verticalAlign:"middle"}}>✏️</button>
                   </div>
                 </div>
               );
@@ -969,7 +986,7 @@ function AdminPanel({user, onBack}) {
                 const planRevenue=planSubs.length*p.price;
                 return(
                   <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderTop:"1px solid rgba(255,255,255,.06)"}}>
-                    <span style={{fontSize:13,color:"var(--gray2)"}}>{p.label} <span style={{color:"var(--gray)",fontSize:11}}>(${p.price})</span></span>
+                    <span style={{fontSize:13,color:"var(--gray2)"}}>{p.label} <span style={{color:"var(--gray)",fontSize:11}}>(${p.price}{p.priceLYD?` / ${p.priceLYD} د.ل`:""})</span></span>
                     <span style={{fontSize:13,color:"var(--white)"}}>{planSubs.length} كود</span>
                     <span style={{fontSize:13,fontWeight:700,color:"var(--gold)"}}>${planRevenue.toLocaleString()}</span>
                   </div>
@@ -1136,7 +1153,7 @@ function AdminPanel({user, onBack}) {
                       <button key={p.id} type="button"
                         className={`plan-btn${form.plan===p.id&&!form.customDays?" on":""}`}
                         onClick={()=>setForm(f=>({...f,plan:p.id,customDays:""}))}>
-                        {p.label}<br/><span style={{fontSize:11,opacity:.8}}>${p.price}</span>
+                        {p.label}<br/><span style={{fontSize:11,opacity:.8}}>${p.price}{p.priceLYD?` / ${p.priceLYD}د.ل`:""}</span>
                       </button>
                     ))}
                   </div>
@@ -1434,6 +1451,7 @@ function ViewClient({c,onClose,onEdit}) {
 // ─── AUTH ─────────────────────────────────────────────────────
 function AuthScreen({onLogin}) {
   const [tab,setTab]=useState("login");
+  const [name,setName]=useState("");
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
   const [err,setErr]=useState("");
@@ -1444,23 +1462,33 @@ function AuthScreen({onLogin}) {
   const handle=async()=>{
     setErr("");setOk("");setLoad(true);
     if(!email.trim()||!pass.trim()){setErr("يرجى ملء جميع الحقول");setLoad(false);return;}
+    if(tab==="register"&&!name.trim()){setErr("يرجى إدخال الاسم");setLoad(false);return;}
     try{
       if(tab==="login"){const u=await signInWithEmailAndPassword(auth,email.trim(),pass);onLogin(u.user);}
       else{
         const u=await createUserWithEmailAndPassword(auth,email.trim(),pass);
-        // ─── منح يوم تجربة مجاني تلقائي لحساب جديد فقط ───
+        try{await updateProfile(u.user,{displayName:name.trim()});}catch{}
+        // ─── منح يوم تجربة مجاني تلقائي — مرة واحدة فقط لكل جهاز ───
         try{
-          const trialExp=new Date();
-          trialExp.setDate(trialExp.getDate()+1);
-          await setDoc(doc(db,"subscriptions",`TRIAL_${u.user.uid}`),{
-            code:`TRIAL_${u.user.uid}`,plan:"trial",planLabel:"يوم مجاني (تجربة)",
-            maxClients:500,expiresAt:trialExp,
-            usedBy:u.user.uid,usedAt:serverTimestamp(),usedByEmail:u.user.email,
-            affiliateCode:null,clientPhone:null,
-            createdBy:"system_trial",createdAt:serverTimestamp(),
-            notes:"تجربة مجانية تلقائية عند التسجيل",devices:{}
-          });
-        }catch(trialErr){ /* لا نوقف تسجيل الدخول إذا فشل إنشاء التجربة المجانية */ }
+          const deviceId=getOrCreateDeviceId();
+          const trialDeviceRef=doc(db,"usedTrialDevices",deviceId);
+          const trialDeviceSnap=await getDoc(trialDeviceRef);
+          if(!trialDeviceSnap.exists()){
+            const trialExp=new Date();
+            trialExp.setDate(trialExp.getDate()+1);
+            await setDoc(doc(db,"subscriptions",`TRIAL_${u.user.uid}`),{
+              code:`TRIAL_${u.user.uid}`,plan:"trial",planLabel:"يوم مجاني (تجربة)",
+              maxClients:500,expiresAt:trialExp,
+              usedBy:u.user.uid,usedAt:serverTimestamp(),usedByEmail:u.user.email,
+              affiliateCode:null,clientPhone:null,
+              createdBy:"system_trial",createdAt:serverTimestamp(),
+              notes:name.trim()||"تجربة مجانية تلقائية عند التسجيل",
+              devices:{[deviceId]:{uid:u.user.uid,email:u.user.email,lastSeen:new Date().toISOString(),type:"تجربة مجانية"}}
+            });
+            await setDoc(trialDeviceRef,{deviceId,firstEmail:u.user.email,firstUid:u.user.uid,createdAt:serverTimestamp()});
+          }
+          // إذا الجهاز سبق له استخدام يوم مجاني، لا يُنشأ اشتراك جديد، والحساب يدخل وضع "بدون اشتراك" العادي (يحتاج كود تفعيل)
+        }catch(trialErr){ /* لا نوقف تسجيل الدخول إذا فشل التحقق أو إنشاء التجربة المجانية */ }
         onLogin(u.user);
       }
     }catch(e){
@@ -1484,6 +1512,13 @@ function AuthScreen({onLogin}) {
             </div>
             {err&&<div className="me">{err}</div>}
             {ok&&<div className="ms">{ok}</div>}
+            {tab==="register"&&(
+              <div className="fg"><label className="fl">الاسم</label>
+                <input className="fi" type="text" placeholder="اسمك الكامل"
+                  value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()}
+                  autoComplete="name"/>
+              </div>
+            )}
             <div className="fg"><label className="fl">البريد الإلكتروني</label>
               <input className="fi" type="email" inputMode="email" placeholder="example@mail.com"
                 value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()}
