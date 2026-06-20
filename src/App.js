@@ -231,7 +231,7 @@ textarea.fi{resize:none}
 .syn{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ok);background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:20px;padding:2px 9px}
 .reminder-box{background:rgba(243,156,18,.06);border:1px solid rgba(243,156,18,.25);border-radius:14px;padding:16px 18px;margin-bottom:18px}
 .reminder-box h3{font-size:13px;font-weight:900;color:var(--warn);margin-bottom:12px}
-.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap}
+.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:nowrap}
 .reminder-row:first-of-type{border-top:none;padding-top:0}
 .revenue-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:18px}
 .revenue-section h3{font-size:13px;font-weight:900;color:var(--gold);margin-bottom:12px}
@@ -908,18 +908,24 @@ function AdminPanel({user, onBack}) {
                 {expiringSoon.map(s=>{
                   const days=daysLeft(s.expiresAt);
                   const phone=(s.clientPhone||"").replace(/[^0-9]/g,"");
+                  const isTrial=s.plan==="trial";
                   return(
                     <div key={s.id} className="reminder-row">
-                      <div>
-                        <span className="sub-code" style={{fontSize:13}}>{s.code||s.id}</span>
-                        <div style={{fontSize:11,color:"var(--gray2)",marginTop:2}}>
+                      <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
+                        {isTrial
+                          ?<span className="sub-code" style={{fontSize:13}}>🎁 يوم مجاني (تجربة)</span>
+                          :<span className="sub-code" style={{fontSize:13,display:"inline-block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",verticalAlign:"bottom"}}>{s.code||s.id}</span>
+                        }
+                        <div style={{fontSize:11,color:"var(--gray2)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {s.usedByEmail||"—"} · باقي {days} {days===1?"يوم":"أيام"}
                         </div>
                       </div>
-                      {phone
-                        ?<a className="ab-btn green" href={`https://wa.me/${phone}?text=${encodeURIComponent(sendReminderMsg(s))}`} target="_blank" rel="noopener noreferrer">📲 إرسال تذكير</a>
-                        :<span style={{fontSize:11,color:"var(--gray)"}}>لا يوجد رقم محفوظ</span>
-                      }
+                      <div style={{flexShrink:0}}>
+                        {phone
+                          ?<a className="ab-btn green" href={`https://wa.me/${phone}?text=${encodeURIComponent(sendReminderMsg(s))}`} target="_blank" rel="noopener noreferrer">📲 إرسال تذكير</a>
+                          :<span style={{fontSize:11,color:"var(--gray)",whiteSpace:"nowrap"}}>لا يوجد رقم محفوظ</span>
+                        }
+                      </div>
                     </div>
                   );
                 })}
