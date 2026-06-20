@@ -570,45 +570,6 @@ function AdminPanel({user, onBack}) {
     }catch(e){ /* لا نوقف العملية الأساسية إذا فشل تسجيل النشاط */ }
   };
 
-  // ─── حذف الحساب الذاتي (يتطلب تأكيد بكلمة المرور) ───
-  const [delAccModal,setDelAccModal]=useState(false);
-  const [delPassword,setDelPassword]=useState("");
-  const [delErr,setDelErr]=useState("");
-  const [delLoad,setDelLoad]=useState(false);
-
-  const deleteMyAccount=async()=>{
-    setDelErr("");
-    if(!delPassword.trim()){setDelErr("أدخل كلمة المرور للتأكيد");return;}
-    setDelLoad(true);
-    try{
-      // 1) إعادة المصادقة بكلمة المرور الحالية
-      const cred=EmailAuthProvider.credential(user.email,delPassword);
-      await reauthenticateWithCredential(auth.currentUser,cred);
-
-      // 2) حذف بيانات العملاء المرتبطة بالحساب
-      const clientsSnap=await getDocs(query(collection(db,"clients"),where("uid","==",user.uid)));
-      for(const d of clientsSnap.docs){ await deleteDoc(doc(db,"clients",d.id)); }
-
-      // 3) حذف اشتراكات الحساب
-      const subsSnap=await getDocs(query(collection(db,"subscriptions"),where("usedBy","==",user.uid)));
-      for(const d of subsSnap.docs){ await deleteDoc(doc(db,"subscriptions",d.id)); }
-
-      // 4) حذف حساب المصادقة نفسه
-      await deleteUser(auth.currentUser);
-      // onAuthStateChanged يتولّى إعادة التوجيه لشاشة الدخول تلقائياً
-    }catch(e){
-      const m={
-        "auth/wrong-password":"كلمة المرور غير صحيحة",
-        "auth/invalid-credential":"كلمة المرور غير صحيحة",
-        "auth/too-many-requests":"محاولات كثيرة، حاول لاحقاً",
-        "auth/requires-recent-login":"يرجى تسجيل الخروج والدخول مرة أخرى ثم إعادة المحاولة"
-      };
-      setDelErr(m[e.code]||"حدث خطأ، تأكد من كلمة المرور وحاول مرة أخرى");
-    }
-    setDelLoad(false);
-  };
-
-
   const [pwModal,setPwModal]=useState(false);
   const [pwEmail,setPwEmail]=useState("");
   const [pwNew,setPwNew]=useState("");
@@ -1249,37 +1210,6 @@ function AdminPanel({user, onBack}) {
           </div>
         )}
 
-        {/* MODAL: حذف الحساب الذاتي */}
-        {delAccModal&&(
-          <div className="dov" onClick={e=>e.target===e.currentTarget&&!delLoad&&setDelAccModal(false)}>
-            <div className="drawer" style={{maxHeight:460}}>
-              <div className="dhead">
-                <span className="dt" style={{color:"var(--err)"}}>🗑️ حذف الحساب نهائياً</span>
-                <button className="dc" onClick={()=>setDelAccModal(false)} disabled={delLoad}>✕</button>
-              </div>
-              <div className="dbody">
-                <div className="me" style={{marginBottom:16,lineHeight:1.8}}>
-                  ⚠️ هذا الإجراء <strong>نهائي ولا يمكن التراجع عنه</strong>. سيتم حذف حسابك بالكامل، وجميع بيانات عملائك، وكل اشتراكاتك المرتبطة به فوراً.
-                </div>
-                <div className="fg">
-                  <label className="fl">أدخل كلمة المرور الحالية للتأكيد *</label>
-                  <input className="fi" type="password" placeholder="كلمة المرور"
-                    value={delPassword} onChange={e=>setDelPassword(e.target.value)}
-                    onKeyDown={e=>e.key==="Enter"&&!delLoad&&deleteMyAccount()}
-                    autoFocus/>
-                </div>
-                {delErr&&<div className="me">{delErr}</div>}
-              </div>
-              <div className="dfoot">
-                <button className="bs" onClick={()=>setDelAccModal(false)} disabled={delLoad}>إلغاء</button>
-                <button className="bsv" style={{background:"linear-gradient(135deg,var(--err),#ff6b6b)",color:"#fff"}} onClick={deleteMyAccount} disabled={delLoad||!delPassword.trim()}>
-                  {delLoad?<span className="spin"/>:"🗑️ تأكيد الحذف النهائي"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* MODAL: New Subscription */}
         {modal==="sub"&&(
           <div className="dov" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
@@ -1731,6 +1661,44 @@ export default function App() {
   const [sel,setSel]=useState(null);
   const [notif,setNotif]=useState(null);
   const [bar,setBar]=useState(false);
+  // ─── حذف الحساب الذاتي (يتطلب تأكيد بكلمة المرور) ───
+  const [delAccModal,setDelAccModal]=useState(false);
+  const [delPassword,setDelPassword]=useState("");
+  const [delErr,setDelErr]=useState("");
+  const [delLoad,setDelLoad]=useState(false);
+
+  const deleteMyAccount=async()=>{
+    setDelErr("");
+    if(!delPassword.trim()){setDelErr("أدخل كلمة المرور للتأكيد");return;}
+    setDelLoad(true);
+    try{
+      // 1) إعادة المصادقة بكلمة المرور الحالية
+      const cred=EmailAuthProvider.credential(user.email,delPassword);
+      await reauthenticateWithCredential(auth.currentUser,cred);
+
+      // 2) حذف بيانات العملاء المرتبطة بالحساب
+      const clientsSnap=await getDocs(query(collection(db,"clients"),where("uid","==",user.uid)));
+      for(const d of clientsSnap.docs){ await deleteDoc(doc(db,"clients",d.id)); }
+
+      // 3) حذف اشتراكات الحساب
+      const subsSnap=await getDocs(query(collection(db,"subscriptions"),where("usedBy","==",user.uid)));
+      for(const d of subsSnap.docs){ await deleteDoc(doc(db,"subscriptions",d.id)); }
+
+      // 4) حذف حساب المصادقة نفسه
+      await deleteUser(auth.currentUser);
+      // onAuthStateChanged يتولّى إعادة التوجيه لشاشة الدخول تلقائياً
+    }catch(e){
+      const m={
+        "auth/wrong-password":"كلمة المرور غير صحيحة",
+        "auth/invalid-credential":"كلمة المرور غير صحيحة",
+        "auth/too-many-requests":"محاولات كثيرة، حاول لاحقاً",
+        "auth/requires-recent-login":"يرجى تسجيل الخروج والدخول مرة أخرى ثم إعادة المحاولة"
+      };
+      setDelErr(m[e.code]||"حدث خطأ، تأكد من كلمة المرور وحاول مرة أخرى");
+    }
+    setDelLoad(false);
+  };
+
   const [saving,setSaving]=useState(false);
   const [dark,setDark]=useState(()=>localStorage.getItem("theme")!=="light");
   const [search,setSearch]=useState("");
@@ -1929,6 +1897,37 @@ export default function App() {
           <button className="lb" onClick={()=>{if(window.confirm("هل تريد تسجيل الخروج؟"))signOut(auth);}}>⎋</button>
         </div>
       </div>
+
+      {/* MODAL: حذف الحساب الذاتي */}
+      {delAccModal&&(
+        <div className="dov" onClick={e=>e.target===e.currentTarget&&!delLoad&&setDelAccModal(false)}>
+          <div className="drawer" style={{maxHeight:460}}>
+            <div className="dhead">
+              <span className="dt" style={{color:"var(--err)"}}>🗑️ حذف الحساب نهائياً</span>
+              <button className="dc" onClick={()=>setDelAccModal(false)} disabled={delLoad}>✕</button>
+            </div>
+            <div className="dbody">
+              <div className="me" style={{marginBottom:16,lineHeight:1.8}}>
+                ⚠️ هذا الإجراء <strong>نهائي ولا يمكن التراجع عنه</strong>. سيتم حذف حسابك بالكامل، وجميع بيانات عملائك، وكل اشتراكاتك المرتبطة به فوراً.
+              </div>
+              <div className="fg">
+                <label className="fl">أدخل كلمة المرور الحالية للتأكيد *</label>
+                <input className="fi" type="password" placeholder="كلمة المرور"
+                  value={delPassword} onChange={e=>setDelPassword(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&!delLoad&&deleteMyAccount()}
+                  autoFocus/>
+              </div>
+              {delErr&&<div className="me">{delErr}</div>}
+            </div>
+            <div className="dfoot">
+              <button className="bs" onClick={()=>setDelAccModal(false)} disabled={delLoad}>إلغاء</button>
+              <button className="bsv" style={{background:"linear-gradient(135deg,var(--err),#ff6b6b)",color:"#fff"}} onClick={deleteMyAccount} disabled={delLoad||!delPassword.trim()}>
+                {delLoad?<span className="spin"/>:"🗑️ تأكيد الحذف النهائي"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="main">
         {subStatus==="expired"&&<div className="sub-expired">⚠️ انتهى اشتراكك — مشاهدة فقط. تواصل مع المسؤول للتجديد.</div>}
